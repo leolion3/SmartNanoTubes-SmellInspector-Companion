@@ -1,0 +1,7 @@
+pyserial
+pywin32
+loguru
+flask
+flask-cors
+flask-socketio
+requests
