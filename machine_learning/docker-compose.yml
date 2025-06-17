@@ -1,0 +1,6 @@
+services:
+  ml_framework:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
