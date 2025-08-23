@@ -1,42 +1,78 @@
 #!/usr/bin/env python3
-import os
-import random
-from typing import List, Dict, Any, Tuple
+from typing import Dict
 
-from logging_framework.log_handler import Module, log
-from ml_adapters.abstract_ml_adapter import MLAdapter
-from persistence.database_handler import DatabaseHandler
-from ml_adapters.ml_handler import ml_handler
-import setup
+import waitress
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
+from ml_pretrainer import pre_trainer
 
-def get_available_data() -> Tuple[List[str], List[List[float]]]:
-    fp: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), setup.DATA_DIR, 'database.db')
-    db: DatabaseHandler = DatabaseHandler(db_path=fp)
-    experiments: List[str] = db.get_experiment_list()
-    log.info('Available experiments:', experiments, module=Module.MAIN)
-    log.info('Available substances:', db.get_substances(), module=Module.MAIN)
-    data: List[Dict[str, Any]] = db.get_labelled_data(experiments[0])
-    log.info('Total Data Entries:', len(data), module=Module.MAIN)
-    return [d['label'] for d in data], [d['data'] for d in data]
+app = Flask(__name__)
+CORS(app)
 
 
-def train_model(data: List[List[float]], labels: List[str]) -> MLAdapter:
-    knn_id: str = ml_handler.get_available_models()[0]
-    model: Dict[str, any] = ml_handler.create_instance(knn_id)
-    classifier: MLAdapter = model['instance']
-    classifier.fit(data, labels)
-    return classifier
+def _get_route_dict(
+        url: str,
+        desc: str,
+        method: str = 'GET',
+        params: Dict[str, str] = None,
+        body: Dict[str, str] = None,
+        response: Dict[str, str] = None
+) -> Dict[str, str | Dict[str, str]]:
+    _dict = {
+        'route': url,
+        'method': method,
+        'description': desc,
+    }
+    if params is not None:
+        _dict['params'] = params
+    if body is not None:
+        _dict['body'] = body
+    if response is not None:
+        _dict['response'] = response
+    return _dict
 
 
-def predict_random(model: MLAdapter, data: List[List[float]], labels: List[str]) -> None:
-    random_idx: int = random.randint(0, len(data) - 1)
-    predicted_label: List[str] = model.predict([data[random_idx]])
-    log.info('Predicted label:', predicted_label, 'actual:', labels[random_idx], module=Module.MAIN)
+@app.route('/predict', methods=['POST'])
+def predict():
+    body = request.json
+    if 'data' not in body:
+        return jsonify({
+            'error': 'No data provided.'
+        }), 400
+    data = body['data']
+    if len(data) != 64:
+        return jsonify({
+            'error': 'Invalid data provided.'
+        }), 400
+    predictions = pre_trainer.predict([float(n) for n in data])
+    return jsonify({
+        'predictions': predictions
+    }), 200
+
+
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify([
+        _get_route_dict('/', desc='shows this page'),
+        _get_route_dict(
+            '/predict',
+            desc='Predicts the labels for a new data entry.',
+            method='POST',
+            body={
+                'data': 'Sensor data as JSON array of 64 values.'
+            },
+            response={
+                'status': '200',
+                'predictions': [
+                    {
+                        'model_name': 'Name of the ML Model',
+                        'predicted_label': 'Label predicted by the model.'
+                    }
+                ]
+            })
+    ])
 
 
 if __name__ == '__main__':
-    _labels, _data = get_available_data()
-    _classifier = train_model(_data, _labels)
-    for i in range(100):
-        predict_random(_classifier, _data, _labels)
+    waitress.serve(app, host='0.0.0.0', port=9090)

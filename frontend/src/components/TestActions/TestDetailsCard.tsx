@@ -6,7 +6,7 @@ import {faMicroscope} from "@fortawesome/free-solid-svg-icons";
 import {Navigate, useLocation} from "react-router-dom";
 import getTestDetails from "./ParseTestDetails";
 import axiosInstance from "../../authentication/axios-instance";
-import {serverIP} from "../../authentication/global-vars";
+import {serverIP, mlServerIP} from "../../authentication/global-vars";
 import {io} from 'socket.io-client';
 
 
@@ -18,6 +18,26 @@ const DeviceDetailsCard: React.FC = () => {
     const [socket, setSocket] = useState<any>(null);
     const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
     const data = getTestDetails(location);
+    const predictionURL = 'http://' + mlServerIP + '/predict';
+    const [predictedLabels, setPredictedLabels] = useState<string>('Noch nichts erkannt.');
+
+    const getPredictedLabels = (data: any) => {
+        axiosInstance.post(predictionURL, {
+            data: data
+        }).then(res => {
+            if (res.status === 200) {
+                const predictions = res.data.predictions;
+                const result = Object.entries(predictions)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(" ; ");
+                setPredictedLabels(result);
+            } else {
+                console.log(res.data);
+            }
+        }).catch(e => {
+            console.log(e);
+        });
+    }
 
     async function getCurrentSubstance() {
         const payload = {
@@ -56,6 +76,7 @@ const DeviceDetailsCard: React.FC = () => {
                 const humidity = data['humidity']
                 const measured_substance = data['substance']
                 const new_data = data.data.toString();
+                getPredictedLabels(new_data.split(";").map(parseFloat));
                 const stringified = 'Data: ' + new_data + ', temperature: ' + temperature + ', humidity: '
                     + humidity + ', substanz: ' + measured_substance + '\n'
                 setMessages((prevMessages) => [...prevMessages, stringified]);
@@ -104,6 +125,8 @@ const DeviceDetailsCard: React.FC = () => {
                     className="font-semibold">{substanceStartTime}</span></p>
                 <p className={`text-gray-600`}>SmellInspector-Gerät: <span
                     className="font-semibold">{device_name}</span></p>
+                <p className={`text-gray-600`}>ML-Erkannte Substanzen: <span
+                    className="font-semibold">{predictedLabels}</span></p>
             </div>
         </div>
         <div className="relative">

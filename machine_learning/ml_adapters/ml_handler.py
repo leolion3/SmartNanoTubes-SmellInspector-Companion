@@ -3,9 +3,10 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, List
 
-from logging_framework.log_handler import Logger, Module, log
+from logging_framework.log_handler import Module, log
 from ml_adapters.abstract_ml_adapter import MLAdapter
 from ml_adapters.knn.knn_classifier import KNNClassifier
+from ml_adapters.random_forest.random_forest_classifier import RandomForestClassifier
 
 
 class MLModelHandler:
@@ -55,6 +56,7 @@ class MLModelHandler:
         log.info('Starting ML adapter...', module=Module.ML)
         self._models: Dict[str, Any] = {
             'KNN': KNNClassifier,
+            'RF': RandomForestClassifier,
         }
         self._instances = {}
         log.info('ML adapter started.', module=Module.ML)

@@ -16,6 +16,8 @@ class Module(Enum):
     DB = 'DB Handler'
     ML = 'ML Handler'
     KNN = 'KNN Classifier'
+    RF = 'Random Forest Classifier'
+    PRE = 'Pre-Trainer'
 
 
 class LogType(Enum):

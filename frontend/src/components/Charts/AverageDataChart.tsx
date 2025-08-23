@@ -1,11 +1,9 @@
-import React, {useEffect, useRef, useState} from "react";
-import {Line} from "react-chartjs-2";
+import React, {useEffect, useState} from "react";
 import {io} from "socket.io-client";
 import {Chart, LineElement, CategoryScale, LinearScale, PointElement} from "chart.js";
 import {serverIP} from "../../authentication/global-vars";
 import getTestDetails from "../TestActions/ParseTestDetails";
 import {useLocation} from "react-router-dom";
-import Legend from "./Legend";
 import {Dataset} from "./IChartData";
 import DataChart from "./DataChart";
 

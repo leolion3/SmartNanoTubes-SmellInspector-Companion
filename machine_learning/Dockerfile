@@ -1,10 +1,10 @@
+FROM python:latest
+
 WORKDIR /app
 
 RUN apt update && apt upgrade -y
-RUN apt install python3 python3-pip -y
 
 COPY requirements.txt .
-RUN python3 -m pip config set global.break-system-packages true
 RUN pip3 install -r requirements.txt --no-cache
 
 ENV TZ=Europe/Berlin
