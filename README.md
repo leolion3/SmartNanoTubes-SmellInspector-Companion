@@ -2,8 +2,6 @@
 
 This software allows controlling one (or multiple) SmellInspector devices from SmartNanoTubes.
 
-**Note:** The app is currently **WINDOWS-ONLY**. Later versions will address this.
-
 ## Driver Setup
 
 The software **must be ran on the PC that the SmellInspector devices are connected to**. To allow the devices
