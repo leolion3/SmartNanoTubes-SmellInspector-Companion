@@ -3,9 +3,7 @@ import csv
 import os
 from typing import Tuple, List
 
-from log_handler.log_handler import Logger, Module, get_instance
-
-logger: Logger = get_instance()
+from log_handler.log_handler import Module, log as logger
 
 
 class CSVHandler:

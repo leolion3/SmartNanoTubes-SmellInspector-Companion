@@ -1,3 +1,4 @@
+import sys
 from typing import Tuple, List
 
 import serial
@@ -5,11 +6,11 @@ import serial.tools.list_ports
 
 from exception.Exceptions import DriverNotInstalledException, DeviceNotConnectedException, PortInUseException, \
     PortNotUsedException, InfoFetchException
-from log_handler.log_handler import Module, Logger, get_instance
-from serial_com import win32_serial
-from serial_com.win32_serial import Win32API
-
-logger: Logger = get_instance()
+from log_handler.log_handler import Module, log as logger
+if sys.platform.startswith("win"):
+    from serial_com.win32_serial import win32api as serial_com
+else:
+    from serial_com.posix_serial import posix_serial_api as serial_com
 
 
 class SerialComHandler:
@@ -17,18 +18,20 @@ class SerialComHandler:
     Handles the serial communication interface with the SmellInspector.
     """
 
-    def __get_com_port(self) -> str:
+    @staticmethod
+    def __get_com_port() -> str:
         """
         Get the com port used for the SmellInspector from win32.
         :return: the com port from win32 api.
         :raise DriverNotInstalledException: if the device is not found.
         """
-        ports: List[str] = self.win32api.find_com_ports_by_driver()
+        ports: List[str] = serial_com.find_com_ports_by_driver()
         if len(ports) > 1:
             logger.info('Multiple SmellInspector devices present. Using first unused one.', module=Module.SERIAL)
         return ports[0]
 
-    def __open_serial_connection(self, serial_port: str) -> serial.Serial:
+    @staticmethod
+    def __open_serial_connection(serial_port: str) -> serial.Serial:
         """
         Try to open a channel to the provided serial port.
         :param serial_port: the serial port to open.
@@ -37,7 +40,7 @@ class SerialComHandler:
         :raise PortInUseException: if the device is already connected.
         """
         try:
-            if self.win32api.check_port_is_used(port=serial_port):
+            if serial_com.check_port_is_used(port=serial_port):
                 raise PortInUseException()
             _port = serial.Serial(
                 port=serial_port, baudrate=115200, bytesize=8, timeout=2, stopbits=serial.STOPBITS_ONE
@@ -45,7 +48,7 @@ class SerialComHandler:
             # Retry 3 times
             for i in range(3):
                 if len(_port.readline()):
-                    self.win32api.allocate_port(port=serial_port)
+                    serial_com.allocate_port(port=serial_port)
                     return _port
                 logger.error(f'Port \"{serial_port}\" connection failed, retrying {i + 1}/3...', module=Module.SERIAL)
             raise DriverNotInstalledException()
@@ -107,7 +110,7 @@ class SerialComHandler:
             logger.error('Attempted to flush serial com, but was apparently not connected.', module=Module.SERIAL)
             logger.error('Ignored error trace:', e, module=Module.SERIAL)
 
-    def read(self, lock_bypass: bool = False) -> str:
+    def read(self, lock_bypass: bool = False) -> str | None:
         """
         Return next line of serial data.
         :param lock_bypass: bypasses thread lock for reading during command execution.
@@ -126,6 +129,7 @@ class SerialComHandler:
                 return data
             except Exception as e:
                 logger.error('Error reading data. Trace:', e, module=Module.SERIAL)
+        return None
 
     def get_device_info(self) -> List[str]:
         """
@@ -174,7 +178,7 @@ class SerialComHandler:
             raise PortNotUsedException()
         self.__connected: bool = False
         name: str = self.get_port_name()
-        self.win32api.deallocate_port(name)
+        serial_com.deallocate_port(name)
         self.__port.close()
         logger.info(f'Closed serial port \"{name}\".', module=Module.SERIAL)
 
@@ -185,7 +189,6 @@ class SerialComHandler:
         """
         try:
             logger.info('Opening Serial Connection...', module=Module.SERIAL)
-            self.win32api: Win32API = win32_serial.get_instance()
             self.__port: serial.Serial = self.__get_serial_port(serial_port=serial_port)
             self.__connected: bool = True
             self.__lock: bool = False

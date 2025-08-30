@@ -1,11 +1,9 @@
-from typing import List, Optional
+from typing import List
 import pythoncom
 import win32com.client
 
 from exception.Exceptions import DriverNotInstalledException, PortNotUsedException, PortInUseException
-from log_handler.log_handler import Module, Logger, get_instance
-
-logger: Logger = get_instance()
+from log_handler.log_handler import Module, log as logger
 
 
 class Win32API:
@@ -84,15 +82,4 @@ class Win32API:
         self.__used_ports: List[str] = []
 
 
-_win32api: Optional[Win32API] = None
-
-
-def get_instance() -> Win32API:
-    """
-    Win32API Handler singleton instance.
-    :return: The singleton instance.
-    """
-    global _win32api
-    if _win32api is None:
-        _win32api = Win32API()
-    return _win32api
+win32api: Win32API = Win32API()

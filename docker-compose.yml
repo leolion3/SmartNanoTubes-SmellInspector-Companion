@@ -1,11 +1,20 @@
 services:
   ml_framework:
     build:
-      context: .
+      context: machine_learning
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "9090:9090"
+    networks:
+      - shared
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
     networks:
       - shared
 

@@ -3,9 +3,7 @@ from typing import List
 
 from database.repositories.abstract_repository import AbstractRepository
 from exception.Exceptions import InvalidDataException, DeviceNotFoundException
-from log_handler.log_handler import Module, Logger, get_instance
-
-logger: Logger = get_instance()
+from log_handler.log_handler import Module, log as logger
 
 
 class DeviceRepository(AbstractRepository):

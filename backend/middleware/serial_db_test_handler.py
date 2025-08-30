@@ -4,10 +4,8 @@ from typing import List, Tuple, Optional
 from flask_socketio import SocketIO
 
 from database.db_handler import DatabaseHandler
-from log_handler.log_handler import Logger, Module, get_instance
+from log_handler.log_handler import Module, log as logger
 from serial_com.serial_com_handler import SerialComHandler
-
-logger: Logger = get_instance()
 
 
 class TestHandler:

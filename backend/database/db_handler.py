@@ -5,9 +5,7 @@ from database.repositories.data_repository import DataRepository
 from database.repositories.device_repository import DeviceRepository
 from database.repositories.substance_repository import SubstanceRepository
 from exception.Exceptions import DBInitialisationException
-from log_handler.log_handler import Module, Logger, get_instance
-
-logger: Logger = get_instance()
+from log_handler.log_handler import Module, log as logger
 
 
 class DatabaseHandler:

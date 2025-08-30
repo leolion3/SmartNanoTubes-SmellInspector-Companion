@@ -1,0 +1,4 @@
+.DS_FILE
+.idea/
+venv/
+.venv/

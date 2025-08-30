@@ -1,15 +1,14 @@
 import json
+import sys
 from typing import Dict, Tuple, List
 
 from flask_socketio import SocketIO
 from database.db_handler import DatabaseHandler
 from exception.Exceptions import DriverNotInstalledException, InvalidDataException, PortNotUsedException, \
     DeviceNotFoundException, InfoFetchException, DeviceNotConnectedException
-from log_handler.log_handler import Logger, Module, get_instance
+from log_handler.log_handler import Module, log as logger
 from middleware.serial_db_test_handler import TestHandler
 from serial_com.serial_com_handler import SerialComHandler
-
-logger: Logger = get_instance()
 
 
 class MiddlewareConnectionHandler:
@@ -95,10 +94,11 @@ class MiddlewareConnectionHandler:
         :return: a list of free serial COM ports as a json list and a http response code.
         """
         try:
-            from serial_com import win32_serial
-            from serial_com.win32_serial import Win32API
-            serial: Win32API = win32_serial.get_instance()
-            ports: List[str] = serial.find_com_ports_by_driver()
+            if sys.platform.startswith("win"):
+                from serial_com.win32_serial import win32api as serial_com
+            else:
+                from serial_com.posix_serial import posix_serial_api as serial_com
+            ports: List[str] = serial_com.find_com_ports_by_driver()
             return json.dumps({
                 'ports': ports
             }), 200

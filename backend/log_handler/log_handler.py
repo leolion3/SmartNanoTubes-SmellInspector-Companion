@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 from enum import Enum
-from typing import TextIO
+from typing import TextIO, Optional
 
 from loguru import logger
 
@@ -10,22 +10,12 @@ LOG_LEVEL: str = os.getenv('LOG_LEVEL') or 'DEBUG'
 _instance = None
 
 
-def get_instance():
-    """
-    Logger singleton.
-    :return the Logger singleton instance.
-    """
-    global _instance
-    if _instance is None:
-        _instance = Logger()
-    return _instance
-
-
 class Module(Enum):
     LOGGER = 'LOGGER'
     CSV = 'CSV'
     SERIAL = 'SERIAL'
     WIN32 = 'WIN32 API'
+    POSIX = 'POSIX API'
     DB = 'SQLITE'
     MIDDLE = 'MIDDLEWARE'
     TEST = 'TEST HANDLER'
@@ -62,6 +52,27 @@ class Logger:
             return 1
         # Debug
         return 2
+
+    def change_log_level(self, log_level: str) -> None:
+        """
+        Update the log level.
+        :param log_level: the new log level (info/silent/warn/debug).
+        :return:
+        """
+        # Info
+        if not len(log_level) or 'info' == log_level.lower():
+            self.__log_level = 0
+        # Silent
+        elif 'silent' == log_level.lower():
+            self.__log_level = -1
+        # Warning
+        elif 'warning' == log_level.lower():
+            self.__log_level = 1
+        # Debug
+        else:
+            self.__log_level = 2
+        self.info('Log level changed to',
+                  log_level, module=Module.LOGGER)
 
     @staticmethod
     def __handle_args(*args) -> str:
@@ -106,10 +117,13 @@ class Logger:
         :param module: The module that logged the error.
         :return:
         """
-        message = str(message) + ' ' + self.__handle_args(*args)
-        msg = self.__build_message(message=message, module=module)
-        logger.error(msg)
-        self.__write_log(message=msg, mtype=LogType.ERROR)
+        try:
+            message = str(message) + ' ' + self.__handle_args(*args)
+            msg = self.__build_message(message=message, module=module)
+            logger.error(msg)
+            self.__write_log(message=msg, mtype=LogType.ERROR)
+        except Exception as e:
+            logger.error('Error writing log. Trace: {}'.format(e))
 
     def info(self, message: str, *args, module: Module = None) -> None:
         """
@@ -118,12 +132,15 @@ class Logger:
         :param module: The module that logged the info message.
         :return:
         """
-        if self.__log_level < 0:
-            return
-        message = str(message) + ' ' + self.__handle_args(*args)
-        msg = self.__build_message(message=message, module=module)
-        logger.info(msg)
-        self.__write_log(message=msg, mtype=LogType.INFO)
+        try:
+            if self.__log_level < 0:
+                return
+            message = str(message) + ' ' + self.__handle_args(*args)
+            msg = self.__build_message(message=message, module=module)
+            logger.info(msg)
+            self.__write_log(message=msg, mtype=LogType.INFO)
+        except Exception as e:
+            self.error('Error writing info log. Trace:', e, module=Module.LOGGER)
 
     def warning(self, message: str, *args, module: Module = None) -> None:
         """
@@ -132,12 +149,15 @@ class Logger:
         :param module: The module that logged the message.
         :return:
         """
-        if self.__log_level < 1:
-            return
-        message = str(message) + ' ' + self.__handle_args(*args)
-        msg = self.__build_message(message=message, module=module)
-        logger.warning(msg)
-        self.__write_log(message=msg, mtype=LogType.WARN)
+        try:
+            if self.__log_level < 1:
+                return
+            message = str(message) + ' ' + self.__handle_args(*args)
+            msg = self.__build_message(message=message, module=module)
+            logger.warning(msg)
+            self.__write_log(message=msg, mtype=LogType.WARN)
+        except Exception as e:
+            self.error('Error writing warning log. Trace:', e, module=Module.LOGGER)
 
     def debug(self, message: str, *args, module: Module = None) -> None:
         """
@@ -146,15 +166,18 @@ class Logger:
         :param module: The module that logged the message.
         :return:
         """
-        if self.__log_level < 2:
-            return
-        message = str(message) + ' ' + self.__handle_args(*args)
-        msg = self.__build_message(message=message, module=module)
-        logger.debug(msg)
-        self.__write_log(message=msg, mtype=LogType.DEBUG)
+        try:
+            if self.__log_level < 2:
+                return
+            message = str(message) + ' ' + self.__handle_args(*args)
+            msg = self.__build_message(message=message, module=module)
+            logger.debug(msg)
+            self.__write_log(message=msg, mtype=LogType.DEBUG)
+        except Exception as e:
+            self.error('Error writing debug log. Trace:', e, module=Module.LOGGER)
 
     def __init__(self):
-        self.__fp: TextIO = None
+        self.__fp: Optional[TextIO] = None
         logger.info(self.__build_message(message='Initialising logger...', module=Module.LOGGER))
         self.__log_level = self.__get_log_level()
         try:
@@ -162,3 +185,6 @@ class Logger:
             self.info(message='Logger initialized.', module=Module.LOGGER)
         except Exception as e:
             self.error(message=f'Error occurred! Logger running without caching. Trace: {e}', module=Module.LOGGER)
+
+
+log: Logger = Logger()

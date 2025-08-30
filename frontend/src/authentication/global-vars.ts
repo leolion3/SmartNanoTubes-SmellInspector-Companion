@@ -1,4 +1,4 @@
 
 const defaultIP = 'localhost'
-export const serverIP = defaultIP + ':8080'
-export const mlServerIP = defaultIP + ':9090'
+export const serverIP = defaultIP + '/api'
+export const mlServerIP = defaultIP + '/ml'

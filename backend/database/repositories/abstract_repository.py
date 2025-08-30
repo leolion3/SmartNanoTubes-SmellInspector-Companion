@@ -2,9 +2,7 @@ import sqlite3
 from typing import List
 
 from exception.Exceptions import InvalidDataException
-from log_handler.log_handler import Module, Logger, get_instance
-
-logger: Logger = get_instance()
+from log_handler.log_handler import Module, log as logger
 
 
 class AbstractRepository:
