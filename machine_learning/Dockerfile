@@ -13,7 +13,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 COPY logging_framework/ logging_framework
 COPY ml_adapters/ ml_adapters
 COPY persistence/ persistence
-COPY data/ data
 COPY *.py .
 COPY . .
 

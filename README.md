@@ -20,7 +20,7 @@ The driver can be installed from [Silicon Labs](https://www.silabs.com/software-
 
 ## Installation
 
-![Microservices Architecture Diagram](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/_html/microservice_architecture.png)
+![Microservices Architecture Diagram](_html/microservice_architecture.svg)
 
 The app is split into three parts:
 
