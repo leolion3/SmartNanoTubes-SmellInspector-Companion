@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 import os
+import dotenv
 
-from logging_framework.log_handler import Logger, log
+if os.path.isfile('.env'):
+    dotenv.load_dotenv()
 
-DATA_DIR: str = 'data'
-DATABASE_FILE_PATH: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATA_DIR, 'database.db')
+DATABASE_FILE_PATH: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'persistence/database.db')
+RE_TRAINING_RATE: int | str = os.getenv('RE_TRAINING_RATE')
+try:
+    RE_TRAINING_RATE = int(RE_TRAINING_RATE)
+except Exception:
+    RE_TRAINING_RATE = 100

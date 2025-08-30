@@ -118,7 +118,7 @@ const RealTimeChart: React.FC = () => {
     }
 
     useEffect(() => {
-        const socket = io(`http://${serverIP}`);
+        const socket = io({ path: "/socket.io" });
         setSocket(socket);
 
         socket.on("connect", () => {

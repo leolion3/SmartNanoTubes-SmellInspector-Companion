@@ -6,6 +6,7 @@ from database.repositories.device_repository import DeviceRepository
 from database.repositories.substance_repository import SubstanceRepository
 from exception.Exceptions import DBInitialisationException
 from log_handler.log_handler import Module, log as logger
+import config
 
 
 class DatabaseHandler:
@@ -13,7 +14,6 @@ class DatabaseHandler:
     Creates tables and serves repository apis.
     """
 
-    __default_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
     __data_create_headers: str = ','.join([f'DATA_{i} TEXT NOT NULL' for i in range(64)])
     __data_create_query: str = ('CREATE TABLE IF NOT EXISTS Data ('
                                 'ID INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -71,7 +71,7 @@ class DatabaseHandler:
         logger.info('Setting up database...', module=Module.DB)
         try:
             if not db_path:
-                db_path: str = self.__default_path
+                db_path: str = config.DB_PATH
             self.conn: sqlite3.Connection = self.__connect_db(db_path)
             self.DataRepository: DataRepository = DataRepository(self.conn)
             self.DeviceRepository: DeviceRepository = DeviceRepository(self.conn)

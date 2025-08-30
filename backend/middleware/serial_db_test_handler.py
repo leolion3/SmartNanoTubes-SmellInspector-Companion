@@ -6,6 +6,7 @@ from flask_socketio import SocketIO
 from database.db_handler import DatabaseHandler
 from log_handler.log_handler import Module, log as logger
 from serial_com.serial_com_handler import SerialComHandler
+from ml_helper import ml_helper
 
 
 class TestHandler:
@@ -59,6 +60,7 @@ class TestHandler:
                     'temperature': temperature,
                     'humidity': humidity
                 }
+                ml_helper.send_new_data(data=data, substance_id=self.__substance_id)
                 self.__socketio.emit('data_collected', json_data)
                 logger.debug('Cached data:', json_data, module=Module.TEST)
             except Exception as e:

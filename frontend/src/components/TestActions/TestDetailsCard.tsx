@@ -30,7 +30,9 @@ const DeviceDetailsCard: React.FC = () => {
                 const result = Object.entries(predictions)
                     .map(([key, value]) => `${key}: ${value}`)
                     .join(" ; ");
-                setPredictedLabels(result);
+                if (result !== undefined && result) {
+                    setPredictedLabels(result);
+                }
             } else {
                 console.log(res.data);
             }
@@ -63,7 +65,7 @@ const DeviceDetailsCard: React.FC = () => {
     }, [messages]);
 
     useEffect(() => {
-        const socket = io('http://' + serverIP);
+        const socket = io({path: "/socket.io"});
         setSocket(socket);
         socket.on('connect', () => {
             console.log('Connected to Flask WebSocket');

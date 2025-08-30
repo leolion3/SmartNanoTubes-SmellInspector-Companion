@@ -19,7 +19,8 @@ class Module(Enum):
     DB = 'SQLITE'
     MIDDLE = 'MIDDLEWARE'
     TEST = 'TEST HANDLER'
-
+    ML_HELPER = 'ML HELPER'
+    SETUP = 'Setup / Config'
 
 class LogType(Enum):
     ERROR = '[ERROR]'

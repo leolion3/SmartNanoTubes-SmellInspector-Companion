@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import random
+from copy import deepcopy
 from typing import List, Dict, Any, Tuple
 
 from sklearn.metrics import classification_report
@@ -9,10 +10,10 @@ import config
 from logging_framework.log_handler import Module, log
 from ml_adapters.abstract_ml_adapter import MLAdapter
 from ml_adapters.ml_handler import ml_handler
-from persistence.database_handler import DatabaseHandler
+from persistence.database_handler import database_handler as db
 
 
-class PreTrainer:
+class ReTrainer:
     """
     Pre-trains all available ML models.
     """
@@ -20,11 +21,7 @@ class PreTrainer:
     @staticmethod
     def _get_available_data() -> Tuple[List[str], List[List[float]]]:
         log.info(f'Reading training data from {config.DATABASE_FILE_PATH}', module=Module.PRE)
-        db: DatabaseHandler = DatabaseHandler(db_path=config.DATABASE_FILE_PATH)
-        experiments: List[str] = db.get_experiment_list()
-        log.info('Available experiments:', experiments, module=Module.PRE)
-        log.info('Available substances:', db.get_substances(), module=Module.PRE)
-        data: List[Dict[str, Any]] = db.get_labelled_data(experiments[0])
+        data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
         return [d['label'] for d in data], [d['data'] for d in data]
 
@@ -80,10 +77,39 @@ class PreTrainer:
                 log.error(f'Error training {model_name} classifier. Trace:', e, module=Module.PRE)
         return classifiers
 
+    def _re_train_models(self) -> None:
+        old_model_data = deepcopy(self.classifiers)
+        try:
+            self.classifiers = self._train_models()
+            log.info('Re-trained successfully.', module=Module.PRE)
+        except Exception as e:
+            log.error('Error re-training classifiers, reverting. Trace:', e, module=Module.PRE)
+            self.classifiers = old_model_data
+
+    def add_data(self, data: List[str], label: str, quantity: str) -> None:
+        try:
+            log.debug('Adding training data. Current count:', self._re_training_count, module=Module.PRE)
+            db.add_data(data, label, quantity)
+            self._re_training_count += 1
+            if self._re_training_count >= config.RE_TRAINING_RATE:
+                self._re_training_count = 0
+                log.info('Reached re-training threshold, re-training models.')
+                self._re_train_models()
+        except Exception as e:
+            log.error('Error adding training data. Trace:', e, module=Module.PRE)
+
+    def persist_from_db_data(self, database: str) -> None:
+        try:
+            db.persist_from_db_data(database)
+            log.info('Persisted successfully. Training models...', module=Module.PRE)
+            self.classifiers = self._train_models()
+            log.info('Models trained successfully.', module=Module.PRE)
+        except Exception as e:
+            log.error('Error persisting training data. Trace:', e, module=Module.PRE)
+
     def __init__(self):
-        log.info('Starting ML Pre-Trainer...', module=Module.PRE)
-        self.classifiers: Dict[str, MLAdapter] = self._train_models()
-        log.info('Pre-Trainer ready.', module=Module.PRE)
+        self.classifiers: Dict[str, MLAdapter] = {}
+        self._re_training_count: int = 0
 
 
-pre_trainer: PreTrainer = PreTrainer()
+re_trainer: ReTrainer = ReTrainer()

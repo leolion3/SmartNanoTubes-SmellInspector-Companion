@@ -6,10 +6,12 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 
 from middleware.connections_handler import MiddlewareConnectionHandler
+from ml_helper import ml_helper
 
+ml_helper.init()
 app = Flask(__name__, static_folder='build/static', template_folder='build')
 socketio = SocketIO(app, cors_allowed_origins="*")
-CORS(app)
+CORS(app, origins=['*'])
 middleware: MiddlewareConnectionHandler = MiddlewareConnectionHandler()
 
 

@@ -3,3 +3,4 @@ loguru
 flask
 flask-cors
 waitress
+python-dotenv
