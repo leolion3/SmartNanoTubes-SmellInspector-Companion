@@ -2,6 +2,8 @@
 
 This software allows controlling one (or multiple) SmellInspector devices from SmartNanoTubes.
 
+For easier measurements, consider 3D-printing a [sensor-holder (link to Makerworld)](https://makerworld.com/en/models/1750746-smartnanotubes-smellinspector-sensor-holder#profileId-1861257).
+
 ## Driver Setup
 
 The software **must be ran on the PC that the SmellInspector devices are connected to**. To allow the devices
