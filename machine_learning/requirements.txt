@@ -4,3 +4,4 @@ flask
 flask-cors
 waitress
 python-dotenv
+xgboost

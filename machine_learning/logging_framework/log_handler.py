@@ -18,6 +18,7 @@ class Module(Enum):
     KNN = 'KNN Classifier'
     RF = 'Random Forest Classifier'
     PRE = 'Pre-Trainer'
+    XGB = 'XG-Boost'
 
 
 class LogType(Enum):
