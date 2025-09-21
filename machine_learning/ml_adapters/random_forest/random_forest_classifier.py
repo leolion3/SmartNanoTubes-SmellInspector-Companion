@@ -39,6 +39,10 @@ class RandomForestClassifier(MLAdapter):
         log.info('Scaling data...', module=Module.RF)
         x_scaled = self._scaler.fit_transform(data)
 
+        log.info('Air:', len([x for x in labels if x == 'air']))
+        log.info('Domol:', len([x for x in labels if 'domol' in x.lower()]))
+        log.info('Octeniderm', len([x for x in labels if 'octeniderm' in x.lower()]))
+
         # Step 1: Air vs Not-Air
         y_binary = ["air" if lbl == "air" else "not-air" for lbl in labels]
         x_train, x_val, y_train, y_val = train_test_split(

@@ -23,7 +23,7 @@ class ReTrainer:
         log.info(f'Reading training data from {config.DATABASE_FILE_PATH}', module=Module.PRE)
         data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
-        return [d['label'] for d in data], [d['data'] for d in data]
+        return [d['label'] + ' ' + d.get('quantity', '') for d in data], [d['data'] for d in data]
 
     @staticmethod
     def _train_model(data: List[List[float]], labels: List[str], model_idx: int) -> MLAdapter:
@@ -61,7 +61,7 @@ class ReTrainer:
         """
         _labels, _data = self._get_available_data()
         x_train, x_test, y_train, y_test = train_test_split(
-            _data, _labels, test_size=0.05, stratify=_labels, random_state=42
+            _data, _labels, test_size=0.2, stratify=_labels, random_state=42
         )
         classifiers: Dict[str, MLAdapter] = {}
         for i, model_name in enumerate(ml_handler.get_available_models()):

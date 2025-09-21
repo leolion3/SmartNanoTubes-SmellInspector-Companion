@@ -41,11 +41,18 @@ class MiddlewareConnectionHandler:
                 return True
         return False
 
-    def __start_test(self, test_name: str, device_nickname: str, socketio: SocketIO) -> bool:
+    def __start_test(
+            self,
+            test_name: str,
+            device_nickname: str,
+            data_acquisition_enabled: bool,
+            socketio: SocketIO
+    ) -> bool:
         """
         Starts a new test.
         :param test_name: name of the test.
         :param device_nickname: nickname of the device.
+        :param data_acquisition_enabled: whether the test data should be saved to the database.
         :param socketio: socketio instance.
         :return:
         """
@@ -55,8 +62,14 @@ class MiddlewareConnectionHandler:
                              f'but it is already running one.', module=Module.MIDDLE)
                 return False
             mac_address = self.__connected_devices[device_nickname].get_device_info()[1]
-            test_obj: TestHandler = TestHandler(self.__connected_devices[device_nickname], self.__database, test_name,
-                                                mac_address, socketio)
+            test_obj: TestHandler = TestHandler(
+                serial_com=self.__connected_devices[device_nickname],
+                database=self.__database,
+                test_name=test_name,
+                mac_address=mac_address,
+                data_acquisition_enabled=data_acquisition_enabled,
+                socketio=socketio
+            )
             test_obj.start_test()
             test_data: Dict = {
                 'device_nickname': device_nickname,
@@ -241,11 +254,18 @@ class MiddlewareConnectionHandler:
             'substance_start_time': test_obj.get_substance_start_time().strftime('%Y-%m-%d %H:%M:%S'),
         }), 200
 
-    def start_stop_test(self, test_name: str, device_nickname: str, socketio: SocketIO) -> Tuple[str, int]:
+    def start_stop_test(
+            self,
+            test_name: str,
+            device_nickname: str,
+            data_acquisition_enabled: bool,
+            socketio: SocketIO
+    ) -> Tuple[str, int]:
         """
         Starts/Stops the test with the given name.
         :param test_name: name of the test.
         :param device_nickname: nickname of the device.
+        :param data_acquisition_enabled: whether the test data should be saved to the database.
         :param socketio: socketio instance.
         :return: The updated test message as json and a http response code.
         """
@@ -261,7 +281,7 @@ class MiddlewareConnectionHandler:
             return json.dumps({'error': 'Test name cannot be empty!'}), 400
         if test_name in self.__database.DataRepository.get_test_names():
             return json.dumps({'error': 'Test name was already used! Pick a new one!'}), 400
-        if not self.__start_test(test_name, device_nickname, socketio):
+        if not self.__start_test(test_name, device_nickname, data_acquisition_enabled, socketio):
             return json.dumps({'error': 'Error starting test, see server logs!'}), 400
         return json.dumps({'info': f'Test \"{test_name}\" started!'}), 200
 

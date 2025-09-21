@@ -84,6 +84,14 @@ class DatabaseHandler:
             for result in results
         }
 
+    @staticmethod
+    def _get_quantity_for_substance(substances, result):
+        try:
+            return substances[dict(result)['SUBSTANCE_ID']][1]
+        except:
+            logger.error('Found no quantity, using default: 0.')
+            return ''
+
     def _get_data_for_experiment(
             self,
             conn: sqlite3.Connection,
@@ -98,10 +106,10 @@ class DatabaseHandler:
         q: str = data_queries.get_data_by_test_id()
         cursor: sqlite3.Cursor = conn.cursor()
         results: List[Dict[str, Any]] = cursor.execute(q, [experiment_name]).fetchall()
-        logger.debug('substances:', dict(results[0])['SUBSTANCE_ID'])
+        logger.debug('substances:', dict(results[0]))
         return [{
             'label': substances[dict(result)['SUBSTANCE_ID']][0],
-            'quantity': substances[dict(result)['SUBSTANCE_ID']][1],
+            'quantity': self._get_quantity_for_substance(substances, result),
             'data': self._get_sensor_data_from_row(dict(result))
         } for result in results]
 

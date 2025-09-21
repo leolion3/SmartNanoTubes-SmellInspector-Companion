@@ -148,7 +148,8 @@ def start_test():
     args = ["test_name", "device_nickname"]
     if not validate_body(body, args):
         return get_error_message(*args)
-    return middleware.start_stop_test(body[args[0]], body[args[1]], socketio)
+    data_acquisition_enabled = body.get('data_acquisition_enabled', True)
+    return middleware.start_stop_test(body[args[0]], body[args[1]], data_acquisition_enabled, socketio)
 
 
 @app.route('/register_device', methods=['POST'])
@@ -167,6 +168,14 @@ def de_register_device():
     if not validate_body(body, args):
         return get_error_message(*args)
     return middleware.de_register_device(body['device_nickname'])
+
+
+@app.route('/get_ml_data', methods=['GET'])
+def get_ml_data():
+    ml_helper.init()
+    return {
+        'status': 'success'
+    }, 200
 
 
 if __name__ == '__main__':

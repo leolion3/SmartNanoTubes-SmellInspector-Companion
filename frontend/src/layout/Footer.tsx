@@ -5,13 +5,13 @@ import {Link} from "react-router-dom";
 
 const Footer: React.FC = () => {
   return (
-    <footer className="text-white py-8 mt-4" style={{backgroundColor: '#e4e2d6'}}>
-      <div className="container mx-auto flex flex-col md:flex-row justify-center items-center px-4 space-y-4 md:space-y-0 md:space-x-8">
+    <footer className="text-white mt-4" style={{backgroundColor: '#e4e2d6'}}>
+      <div className="container mx-auto flex flex-col md:flex-row justify-center items-center px-4 space-y-4 md:space-y-0 md:space-x-8 py-8">
         {/* Map Section */}
 
 
         {/* Company Info Section */}
-        <div className="w-full ">
+        <div className="w-full">
           <div className="px-4">
             <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-4 gap-4 ml-4 mr-4">
               <div className="w-full ">
@@ -98,7 +98,7 @@ const Footer: React.FC = () => {
                   </li>
                 </ul>
               </div>
-              <div className="sm:visible lg:invisible md:visible mr-auto ml-auto">
+              <div className="sm:visible lg:hidden md:visible mr-auto ml-auto mt-4">
                 <img src="static/logo.svg" alt="Logo" style={{height: '80px', maxHeight: '80px'}}/>
               </div>
             </div>
@@ -106,6 +106,9 @@ const Footer: React.FC = () => {
           </div>
         </div>
       </div>
+        {/*<div className="sticky bottom-0 left-0 w-full text-gray-700 text-center text-sm py-2" style={{ backgroundColor: '#dcdacf', color: '#888875' }}>*/}
+        {/*    Created by IsraTech Ltd. | Contact: <a href="mailto:support@isratech.software">support@isratech.software</a>*/}
+        {/*</div>*/}
     </footer>
   );
 };

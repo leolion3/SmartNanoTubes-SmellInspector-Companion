@@ -42,15 +42,17 @@ class TestHandler:
                     continue
                 data, temperature, humidity = data
                 now = datetime.now()
-                self.__database.DataRepository.persist_data(
-                    self.__test_name,
-                    self.__mac_address,
-                    self.__substance_id,
-                    now,
-                    data,
-                    temperature,
-                    humidity
-                )
+                if self.__data_acquisition_enabled:
+                    self.__database.DataRepository.persist_data(
+                        self.__test_name,
+                        self.__mac_address,
+                        self.__substance_id,
+                        now,
+                        data,
+                        temperature,
+                        humidity
+                    )
+                    ml_helper.send_new_data(data=data, substance_id=self.__substance_id)
                 json_data = {
                     'test name': self.__test_name,
                     'mac address': self.__mac_address,
@@ -60,7 +62,6 @@ class TestHandler:
                     'temperature': temperature,
                     'humidity': humidity
                 }
-                ml_helper.send_new_data(data=data, substance_id=self.__substance_id)
                 self.__socketio.emit('data_collected', json_data)
                 logger.debug('Cached data:', json_data, module=Module.TEST)
             except Exception as e:
@@ -131,16 +132,25 @@ class TestHandler:
         self.__test_thread = threading.Thread(target=self.__serial_to_db_thread)
         self.__test_thread.start()
 
-    def __init__(self, serial_com: SerialComHandler, database: DatabaseHandler, test_name: str, mac_address: str,
-                 socketio: SocketIO):
+    def __init__(
+            self,
+            serial_com: SerialComHandler,
+            database: DatabaseHandler,
+            test_name: str,
+            mac_address: str,
+            data_acquisition_enabled: bool,
+            socketio: SocketIO
+    ):
         """
         Constructor.
         :param serial_com: serial com object for reading serial data.
         :param database: db connection for persisting data.
         :param test_name: the name of the test.
         :param mac_address: the MAC address of the device.
+        :param data_acquisition_enabled: whether the test data should be saved to the database.
         :param socketio: the flask socketio context.
         """
+        self.__data_acquisition_enabled = data_acquisition_enabled
         self.__running = False
         self.__serial_com: SerialComHandler = serial_com
         self.__database: DatabaseHandler = database

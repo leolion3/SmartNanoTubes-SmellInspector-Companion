@@ -10,6 +10,7 @@ const StartTestCard: React.FC = () => {
     const [deviceName, setDeviceName] = useState("");
     const [availableDevices, setAvailableDevices] = useState<any>([]);
     const [testMessage, setTestMessage] = useState("");
+    const [cacheDataToDB, setCacheDataToDB] = useState<boolean>(true);
     const navigate = useNavigate();
 
     async function getAvailableDevices() {
@@ -40,7 +41,8 @@ const StartTestCard: React.FC = () => {
         e.preventDefault();
         const payload = {
             test_name: testName,
-            device_nickname: deviceName
+            device_nickname: deviceName,
+            data_acquisition_enabled: cacheDataToDB
         }
         setErrorMessage('');
         setTestMessage('Test wird gestartet, bitte warten...')
@@ -94,8 +96,24 @@ const StartTestCard: React.FC = () => {
                     {availableDevices}
                 </select>
             </div>
+            <div className="mb-4 flex flex-wrap text-center space-x-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="chosen-device">
+                    Test-Daten Abspeichern?
+                    <span className="ml-2 text-gray-500 cursor-pointer"
+                          title="Ob aufgenommene Test-Daten in der Datenbank gespeichert werden sollen.">
+                            (?)
+                          </span>
+                </label>
+                <input
+                    id="enable_data_acquisition_switch"
+                    type="checkbox"
+                    checked={cacheDataToDB}
+                    onChange={(e) => setCacheDataToDB(e.target.checked)}
+                    className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                />
+            </div>
 
-            <div className="items-center justify-between">
+            <div className="items-center text-center justify-between">
                 <button
                     type="submit"
                     className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
