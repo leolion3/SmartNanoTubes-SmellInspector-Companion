@@ -3,6 +3,7 @@ venv/
 .idea/
 *.db
 *.log
+*.png
 data/
 **/__pycache__/
 **/**/__pycache__/

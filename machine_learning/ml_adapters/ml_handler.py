@@ -7,7 +7,7 @@ from logging_framework.log_handler import Module, log
 from ml_adapters.abstract_ml_adapter import MLAdapter
 from ml_adapters.knn.knn_classifier import KNNClassifier
 from ml_adapters.random_forest.random_forest_classifier import RandomForestClassifier
-from ml_adapters.xg_boost.xg_boost_classifier import XGBoostClassifier
+# from ml_adapters.xg_boost.xg_boost_classifier import XGBoostClassifier
 
 
 class MLModelHandler:
@@ -58,7 +58,7 @@ class MLModelHandler:
         self._models: Dict[str, Any] = {
             'KNN': KNNClassifier,
             'RF': RandomForestClassifier,
-            'XGB': XGBoostClassifier,
+            # 'XGB': XGBoostClassifier,
         }
         self._instances = {}
         log.info('ML adapter started.', module=Module.ML)

@@ -3,8 +3,9 @@ import random
 from copy import deepcopy
 from typing import List, Dict, Any, Tuple
 
-from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.metrics import classification_report, confusion_matrix
 
 import config
 from logging_framework.log_handler import Module, log
@@ -23,7 +24,7 @@ class ReTrainer:
         log.info(f'Reading training data from {config.DATABASE_FILE_PATH}', module=Module.PRE)
         data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
-        return [d['label'] + ' ' + d.get('quantity', '') for d in data], [d['data'] for d in data]
+        return [(d['label'] + ' ' + d.get('quantity', '')).strip().lower() for d in data], [d['data'] for d in data]
 
     @staticmethod
     def _train_model(data: List[List[float]], labels: List[str], model_idx: int) -> MLAdapter:
@@ -54,15 +55,123 @@ class ReTrainer:
                 log.error(f'Error trying to predict label with model {model_name}. Trace:', e, module=Module.PRE)
         return results
 
+    @staticmethod
+    def _group_sequences(labels: List[str], data: List[List[float]]) -> List[Dict[str, Any]]:
+        """
+        Groups contiguous samples by label changes.
+        """
+        groups = []
+        current_label, current_data = labels[0], []
+
+        for lbl, sample in zip(labels, data):
+            if lbl != current_label:
+                groups.append({"label": current_label, "data": current_data})
+                current_label, current_data = lbl, []
+            current_data.append(sample)
+        groups.append({"label": current_label, "data": current_data})
+        return groups
+
+    @staticmethod
+    def _split_groups(groups: List[Dict[str, Any]], train_ratio: float = 0.7, seed: int = 42):
+        """
+        Splits groups into train/test while preserving contiguity and balancing labels.
+        """
+        random.seed(seed)
+        by_label = {}
+
+        # Organize groups by label
+        for g in groups:
+            by_label.setdefault(g["label"], []).append(g)
+
+        train_data, test_data = [], []
+
+        for lbl, g_list in by_label.items():
+            random.shuffle(g_list)
+
+            if len(g_list) == 1:
+                # only one group → force it into train
+                train_data.extend(g_list)
+            else:
+                split_idx = max(1, int(len(g_list) * train_ratio))
+                split_idx = min(len(g_list) - 1, split_idx)  # leave at least one for test
+                train_data.extend(g_list[:split_idx])
+                test_data.extend(g_list[split_idx:])
+
+        return train_data, test_data
+
+    @staticmethod
+    def _prepare_balanced_data(groups: List[Dict[str, Any]], balance: bool = True):
+        """
+        Converts grouped data into flat X, y lists.
+        Optionally balances label counts by undersampling larger groups
+        down to the smallest class size.
+        """
+        x, y = [], []
+        for g in groups:
+            x.extend(g["data"])
+            y.extend([g["label"]] * len(g["data"]))
+
+        if not balance or len(set(y)) <= 1:
+            return x, y
+
+        # Find minimum class size (for undersampling)
+        counts = {lbl: y.count(lbl) for lbl in set(y)}
+        min_count = min(counts.values())
+
+        x_bal, y_bal = [], []
+        for lbl in set(y):
+            lbl_samples = [(x, yy) for x, yy in zip(x, y) if yy == lbl]
+            sampled = random.sample(lbl_samples, min_count)
+            for sample_x, sample_y in sampled:
+                x_bal.append(sample_x)
+                y_bal.append(sample_y)
+
+        return x_bal, y_bal
+
+    @staticmethod
+    def save_confusion_matrix(y_true, y_pred, labels, title, filename):
+        cm = confusion_matrix(y_true, y_pred, labels=labels)
+        fig, ax = plt.subplots(figsize=(6, 5))
+        im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+
+        # Title and colorbar
+        ax.set_title(title)
+        plt.colorbar(im, ax=ax)
+
+        # Tick marks and labels
+        tick_marks = np.arange(len(labels))
+        ax.set_xticks(tick_marks)
+        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_yticks(tick_marks)
+        ax.set_yticklabels(labels)
+
+        # Annotate cells
+        thresh = cm.max() / 2.0
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                ax.text(
+                    j, i, format(cm[i, j], "d"),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black"
+                )
+
+        ax.set_ylabel("True label")
+        ax.set_xlabel("Predicted label")
+        fig.tight_layout()
+        plt.savefig(filename, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        log.info(f"Confusion matrix saved to {filename}", module=Module.RF)
+
     def _train_models(self) -> Dict[str, MLAdapter]:
         """
         Trains all available ML models and returns them as a dict of names to MLAdapter objects.
         :return: the dictionary of names to MLAdapter objects.
         """
         _labels, _data = self._get_available_data()
-        x_train, x_test, y_train, y_test = train_test_split(
-            _data, _labels, test_size=0.2, stratify=_labels, random_state=42
-        )
+        groups = self._group_sequences(_labels, _data)
+        train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
+        x_train, y_train = self._prepare_balanced_data(train_groups)
+        x_test, y_test = self._prepare_balanced_data(test_groups)
         classifiers: Dict[str, MLAdapter] = {}
         for i, model_name in enumerate(ml_handler.get_available_models()):
             try:
@@ -70,6 +179,13 @@ class ReTrainer:
                 _classifier = self._train_model(x_train, y_train, i)
                 y_pred = _classifier.predict(x_test)
                 report = classification_report(y_test, y_pred, digits=3)
+                self.save_confusion_matrix(
+                    y_test,
+                    y_pred,
+                    _classifier.classes_,
+                    "Substance Classifier Confusion Matrix",
+                    "confusion_matrix_substances.png"
+                )
                 log.info(f"=== {model_name} Classification Report ===", module=Module.PRE)
                 log.info(report, module=Module.PRE)
                 classifiers[model_name] = _classifier

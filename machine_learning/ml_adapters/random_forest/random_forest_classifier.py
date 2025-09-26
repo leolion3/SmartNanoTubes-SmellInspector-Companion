@@ -39,35 +39,22 @@ class RandomForestClassifier(MLAdapter):
         log.info('Scaling data...', module=Module.RF)
         x_scaled = self._scaler.fit_transform(data)
 
-        log.info('Air:', len([x for x in labels if x == 'air']))
+        log.info('Air:', len([x for x in labels if 'air' in x.lower()]))
         log.info('Domol:', len([x for x in labels if 'domol' in x.lower()]))
         log.info('Octeniderm', len([x for x in labels if 'octeniderm' in x.lower()]))
 
         # Step 1: Air vs Not-Air
-        y_binary = ["air" if lbl == "air" else "not-air" for lbl in labels]
-        x_train, x_val, y_train, y_val = train_test_split(
-            x_scaled, y_binary, test_size=0.2, stratify=y_binary, random_state=42
-        )
+        y_binary = ["air" if "air" in lbl else "not-air" for lbl in labels]
         log.info('Fitting air detector...', module=Module.RF)
-        self._clf_air.fit(x_train, y_train)
-        acc_air = self._clf_air.score(x_val, y_val)
-        log.info(f'Air detection accuracy: {acc_air:.3f}', module=Module.RF)
+        self._clf_air.fit(x_scaled, y_binary)
+        log.info('Fitting substance classifier...', module=Module.RF)
+        self._clf_substance.fit(x_scaled, labels)
 
-        # Step 2: Domol vs Octeniderm (non-air only)
-        mask = [lbl != "air" for lbl in labels]
-        x_substances = [x for x, m in zip(x_scaled, mask) if m]
-        y_substances = [lbl for lbl in labels if lbl != "air"]
-
-        if len(set(y_substances)) > 1:
-            xs_train, xs_val, ys_train, ys_val = train_test_split(
-                x_substances, y_substances, test_size=0.2, stratify=y_substances, random_state=42
-            )
-            log.info('Fitting substance classifier...', module=Module.RF)
-            self._clf_substance.fit(xs_train, ys_train)
-            acc_sub = self._clf_substance.score(xs_val, ys_val)
-            log.info(f'Substance classification accuracy: {acc_sub:.3f}', module=Module.RF)
-        else:
-            log.warning('Only one substance class present, skipping step 2 training.', module=Module.RF)
+    @property
+    def classes_(self) -> List[str]:
+        if hasattr(self._clf_substance, "classes_"):
+            return list(self._clf_substance.classes_)
+        return []
 
     @override
     def predict(self, data: List[List[float]]) -> List[str]:

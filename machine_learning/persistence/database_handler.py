@@ -156,6 +156,7 @@ class DatabaseHandler:
     def __init__(self):
         logger.info('Starting Database Handler...', module=Module.DB)
         self.conn: sqlite3.Connection = self._init_db()
+        logger.info('Database Handler initialized.', module=Module.DB)
 
 
 database_handler: DatabaseHandler = DatabaseHandler()
