@@ -106,9 +106,9 @@ const Footer: React.FC = () => {
           </div>
         </div>
       </div>
-        {/*<div className="sticky bottom-0 left-0 w-full text-gray-700 text-center text-sm py-2" style={{ backgroundColor: '#dcdacf', color: '#888875' }}>*/}
-        {/*    Created by IsraTech Ltd. | Contact: <a href="mailto:support@isratech.software">support@isratech.software</a>*/}
-        {/*</div>*/}
+        <div className="sticky bottom-0 left-0 w-full text-gray-700 text-center text-sm py-2" style={{ backgroundColor: '#dcdacf', color: '#888875' }}>
+            Created by IsraTech Ltd. | Contact: <a href="mailto:support@isratech.software">support@isratech.software</a>
+        </div>
     </footer>
   );
 };
