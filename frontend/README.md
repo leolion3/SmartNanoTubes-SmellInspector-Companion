@@ -17,7 +17,7 @@ npm start
 
 After starting the software, you are presented with the dashboard overview:
 
-![Dashboard image](_html/home.png)
+![Dashboard image](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/home.png)
 
 Here you can select between device management, substance management and test management.
 
@@ -25,11 +25,11 @@ Here you can select between device management, substance management and test man
 
 To add a new SmellInspector device, click the device management card. You are then presented with the following view:
 
-![Device management menu](_html/available_devices_overview.png)
+![Device management menu](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/available_devices_overview.png)
 
 Here you can view previously-/connected devices and add new SmellInspector devices. To do so, click on the "New device" card, which then presents you with this interface:
 
-![Add device interface](_html/new_device.png)
+![Add device interface](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/new_device.png)
 
 The software will now perform a port scan to find connected SmellInspector devices. After devices are found, you will have the option of giving them a name and selecting the communication port.
 
@@ -43,7 +43,7 @@ After the device is added, it will show up in the device overview.
 
 The software remembers previously connected SmellInspector devices using their Mac-Address. If you wish, you can reconnect previously connected devices by clicking on their card in the overview and then hitting the "Connect device" button in the device's details page:
 
-![Reconnect device](_html/disconnected_device.png)
+![Reconnect device](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/disconnected_device.png)
 
 > You can also just add the device using the usual "Add device" option. The software will delete the old device and replace it with the new one.
 
@@ -51,7 +51,7 @@ The software remembers previously connected SmellInspector devices using their M
 
 After a device has been connected, it can be managed by clicking on its card in the device overview page. This will open a new page with the device details. Here, the fan speeds can be adjusted and the device can be disconnected before being ejected.
 
-![Connected device details](_html/device_overview.png)
+![Connected device details](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/device_overview.png)
 
 > **Always use the disconnect button before unplugging the device to prevent test-data loss!** The device will not allow you to disconnect if it is currently in use!
 
@@ -59,13 +59,13 @@ After a device has been connected, it can be managed by clicking on its card in 
 
 Before starting a test, lets create some substances that are going to be measured. To do this, head to the "Substances" tab. Here you can view existing substances. "Air" is present by default and **cannot be removed**.
 
-![Substances overview page](_html/substances.png)
+![Substances overview page](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/substances.png)
 
 > When starting a new test, the first substance is always set to "air". Ensure that no odors are present and allow the device at least 30 minutes to get adjusted before starting a measurement.
 
 To add a new substance, simply click on the "Add new substance" card and then enter a substance name and, optionally, a quantity (50 muL, for instance).
 
-![New substance page](_html/new_substance.png)
+![New substance page](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/new_substance.png)
 
 ## Test management
 
@@ -73,21 +73,21 @@ To gather data from the SmellInspector and perform gas classification, head to t
 
 > A "Test" refers to a test instance in which a SmellInspector device is being used. Data acquisition can be toggled on or off as desired. The "Test" is merely an abstraction layer to get live data from the sensor, display it, and perform classification.
 
-![Test management page](_html/test_overview_empty.png)
+![Test management page](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/test_overview_empty.png)
 
 To start a new test, click on "Start new test", then give the test a name and select the SmellInspector device to use. If you wish for the SmellInspector to be saved for later use, leave the "Save test-data" checkbox ticked. Unticking this checkbox can be used if you wish to only perform inference without adding new data to your existing dataset.
 
-![New test page](_html/new_test.png)
+![New test page](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/new_test.png)
 
 After the test has been started, it will show up in the interface:
 
-![New test page](_html/test_overview.png)
+![New test page](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/test_overview.png)
 
 ## Test and ML-Inference
 
 To view data acquired from the SmellInspector, click the card for the test you just started. You will be presented with the following page:
 
-![Running test page](_html/test_data.png)
+![Running test page](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/frontend/_html/test_data.png)
 
 The interface is split up into four section:
 

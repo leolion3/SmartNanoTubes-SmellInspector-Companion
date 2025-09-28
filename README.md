@@ -8,9 +8,9 @@ For easier measurements, consider 3D-printing a [sensor-holder (link to Makerwor
 
 The documentation of this software is split up into three parts:
 
-1. [Frontend Documentation](frontend/README.md)
+1. [Frontend Documentation](https://github.com/leolion3/SmartNanoTubes-SmellInspector-Companion/blob/main/frontend/README.md)
 2. [Backend Documentation](backend/README.md)
-3. [ML-Backend Documentation](machine_learning/README.md)
+3. [ML-Backend Documentation](https://github.com/leolion3/SmartNanoTubes-SmellInspector-Companion/blob/main/machine_learning/README.md)
 
 ## Driver Setup
 
@@ -28,7 +28,7 @@ The driver can be installed from [Silicon Labs](https://www.silabs.com/software-
 
 ## Installation
 
-![Microservices Architecture Diagram](_html/microservice_architecture.svg)
+![Microservices Architecture Diagram](https://raw.githubusercontent.com/leolion3/SmartNanoTubes-SmellInspector-Companion/refs/heads/main/_html/microservice_architecture.svg)
 
 The app is split into three parts:
 
