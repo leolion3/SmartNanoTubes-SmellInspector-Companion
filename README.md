@@ -4,6 +4,14 @@ This software allows controlling one (or multiple) SmellInspector devices from S
 
 For easier measurements, consider 3D-printing a [sensor-holder (link to Makerworld)](https://makerworld.com/en/models/1750746-smartnanotubes-smellinspector-sensor-holder#profileId-1861257).
 
+## Documentation
+
+The documentation of this software is split up into three parts:
+
+1. [Frontend Documentation](frontend/README.md)
+2. [Backend Documentation](backend/README.md)
+3. [ML-Backend Documentation](machine_learning/README.md)
+
 ## Driver Setup
 
 The software **must be ran on the PC that the SmellInspector devices are connected to**. To allow the devices
