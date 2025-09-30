@@ -23,7 +23,6 @@ class RandomForestClassifier(MLAdapter):
         :param n_estimators: Number of trees in the random forest.
         """
         self._scaler: StandardScaler = StandardScaler()
-        self._clf_air = SkRandomForest(n_estimators=n_estimators, random_state=42)
         self._clf_substance = SkRandomForest(n_estimators=n_estimators, random_state=42)
 
     @override
@@ -35,19 +34,9 @@ class RandomForestClassifier(MLAdapter):
         :return:
         """
         log.info('Training Random Forest Classifier...', module=Module.RF)
-
-        # Scale data
         log.info('Scaling data...', module=Module.RF)
         x_scaled = self._scaler.fit_transform(data)
-
-        counts: Counter = Counter(labels)
-        for lbl, cnt in counts.items():
-            log.info(f"{lbl}: {cnt}", module=Module.RF)
-
-        # Step 1: Air vs Not-Air
-        y_binary = ["air" if "air" in lbl else "not-air" for lbl in labels]
         log.info('Fitting air detector...', module=Module.RF)
-        self._clf_air.fit(x_scaled, y_binary)
         log.info('Fitting substance classifier...', module=Module.RF)
         self._clf_substance.fit(x_scaled, labels)
 
@@ -65,11 +54,4 @@ class RandomForestClassifier(MLAdapter):
         :return: predicted labels.
         """
         x_scaled = self._scaler.transform(data)
-        preds = []
-        for sample in x_scaled:
-            sample_reshaped = sample.reshape(1, -1)
-            if self._clf_air.predict(sample_reshaped)[0] == "air":
-                preds.append("air")
-            else:
-                preds.append(str(self._clf_substance.predict(sample_reshaped)[0]))
-        return preds
+        return self._clf_substance.predict(x_scaled)

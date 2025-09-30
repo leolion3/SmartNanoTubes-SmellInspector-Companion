@@ -190,6 +190,18 @@ class ReTrainer:
         train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
         x_train, y_train = self._prepare_balanced_data(train_groups, balance=True)
         x_test, y_test = self._prepare_balanced_data(test_groups, balance=True)
+
+        unique_train, counts_train = np.unique(y_train, return_counts=True)
+        unique_test, counts_test = np.unique(y_test, return_counts=True)
+
+        print("Train label distribution:")
+        for label, count in zip(unique_train, counts_train):
+            print(f"  {label}: {count}")
+
+        print("\nTest label distribution:")
+        for label, count in zip(unique_test, counts_test):
+            print(f"  {label}: {count}")
+
         classifiers: Dict[str, MLAdapter] = {}
         for i, model_name in enumerate(ml_handler.get_available_models()):
             try:
