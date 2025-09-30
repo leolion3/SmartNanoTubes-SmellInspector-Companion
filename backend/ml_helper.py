@@ -17,8 +17,7 @@ class MLHelper:
     Sends data to the ML backend on start and gathering new data.
     """
 
-    @staticmethod
-    def _send_request_until_received(payload: Dict, url: str) -> None:
+    def _send_request_until_received(self, payload: Dict, url: str) -> None:
         while True:
             try:
                 r = requests.post(url, json=payload)
@@ -28,6 +27,10 @@ class MLHelper:
             except Exception as e:
                 logger.error('Error sending request to ML backend. Trace:', e, module=Module.ML_HELPER)
                 time.sleep(1)
+                if not self._locked:
+                    self._error_count += 1
+                    if self._error_count > 10:
+                        self._send_initial_data()
 
     def _send_test_data(self, url: str) -> None:
         try:
@@ -52,13 +55,18 @@ class MLHelper:
         Sends initial data to the ML backend.
         If not data is found, send a notification with an empty data list.
         """
-        url: str = config.ML_BACKEND_URL + '/initial-data'
-        logger.info('Sending initial test data to ML backend...', module=Module.ML_HELPER)
-        if not (os.path.exists(config.DB_PATH) and os.path.isfile(config.DB_PATH)):
-            logger.warning('No data found, sending notification to ML backend...', module=Module.ML_HELPER)
-            self._send_no_data_found(url=url)
-            return
-        self._send_test_data(url=url)
+        self._locked = True
+        try:
+            url: str = config.ML_BACKEND_URL + '/initial-data'
+            logger.info('Sending initial test data to ML backend...', module=Module.ML_HELPER)
+            if not (os.path.exists(config.DB_PATH) and os.path.isfile(config.DB_PATH)):
+                logger.warning('No data found, sending notification to ML backend...', module=Module.ML_HELPER)
+                self._send_no_data_found(url=url)
+                return
+            self._send_test_data(url=url)
+        finally:
+            self._locked = False
+            self._error_count = 0
 
     def send_new_data(self, data: List[str], substance_id: str) -> None:
         """
@@ -85,6 +93,8 @@ class MLHelper:
 
     def __init__(self):
         self._database: DatabaseHandler = DatabaseHandler()
+        self._error_count = 0
+        self._locked = False
 
 
 ml_helper: MLHelper = MLHelper()

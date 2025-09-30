@@ -24,7 +24,9 @@ class ReTrainer:
         log.info(f'Reading training data from {config.DATABASE_FILE_PATH}', module=Module.PRE)
         data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
-        return [(d['label'] + ' ' + d.get('quantity', '')).strip().lower() for d in data], [d['data'] for d in data]
+        # return [(d['label'] + ' ' + d.get('quantity', '')).strip().lower() for d in data], [d['data'] for d in data]
+        # TODO quantities disabled for thesis test
+        return [(d['label']).strip().lower() for d in data], [d['data'] for d in data]
 
     @staticmethod
     def _train_model(data: List[List[float]], labels: List[str], model_idx: int) -> MLAdapter:
@@ -100,11 +102,17 @@ class ReTrainer:
         return train_data, test_data
 
     @staticmethod
-    def _prepare_balanced_data(groups: List[Dict[str, Any]], balance: bool = True):
+    def _prepare_balanced_data(
+            groups: List[Dict[str, Any]],
+            balance: bool = True,
+            strategy: str = "oversample"  # "undersample" | "oversample"
+    ):
         """
         Converts grouped data into flat X, y lists.
-        Optionally balances label counts by undersampling larger groups
-        down to the smallest class size.
+
+        Balancing strategies:
+          - "undersample": reduce larger groups down to the smallest size.
+          - "oversample": increase smaller groups up to the largest size.
         """
         x, y = [], []
         for g in groups:
@@ -114,14 +122,24 @@ class ReTrainer:
         if not balance or len(set(y)) <= 1:
             return x, y
 
-        # Find minimum class size (for undersampling)
         counts = {lbl: y.count(lbl) for lbl in set(y)}
-        min_count = min(counts.values())
+
+        if strategy == "undersample":
+            target_count = min(counts.values())
+        elif strategy == "oversample":
+            target_count = max(counts.values())
+        else:
+            raise ValueError(f"Unknown balancing strategy: {strategy}")
 
         x_bal, y_bal = [], []
         for lbl in set(y):
-            lbl_samples = [(x, yy) for x, yy in zip(x, y) if yy == lbl]
-            sampled = random.sample(lbl_samples, min_count)
+            lbl_samples = [(xx, yy) for xx, yy in zip(x, y) if yy == lbl]
+
+            if strategy == "undersample":
+                sampled = random.sample(lbl_samples, target_count)
+            else:  # oversample
+                sampled = random.choices(lbl_samples, k=target_count)
+
             for sample_x, sample_y in sampled:
                 x_bal.append(sample_x)
                 y_bal.append(sample_y)
@@ -170,8 +188,8 @@ class ReTrainer:
         _labels, _data = self._get_available_data()
         groups = self._group_sequences(_labels, _data)
         train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
-        x_train, y_train = self._prepare_balanced_data(train_groups)
-        x_test, y_test = self._prepare_balanced_data(test_groups)
+        x_train, y_train = self._prepare_balanced_data(train_groups, balance=True)
+        x_test, y_test = self._prepare_balanced_data(test_groups, balance=True)
         classifiers: Dict[str, MLAdapter] = {}
         for i, model_name in enumerate(ml_handler.get_available_models()):
             try:
@@ -184,7 +202,7 @@ class ReTrainer:
                     y_pred,
                     _classifier.classes_,
                     "Substance Classifier Confusion Matrix",
-                    "confusion_matrix_substances.png"
+                    f"{model_name}_confusion_matrix_substances.png"
                 )
                 log.info(f"=== {model_name} Classification Report ===", module=Module.PRE)
                 log.info(report, module=Module.PRE)

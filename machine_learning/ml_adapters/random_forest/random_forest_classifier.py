@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from collections import Counter
 from typing import override, List
 
 from sklearn.model_selection import train_test_split
@@ -39,9 +40,9 @@ class RandomForestClassifier(MLAdapter):
         log.info('Scaling data...', module=Module.RF)
         x_scaled = self._scaler.fit_transform(data)
 
-        log.info('Air:', len([x for x in labels if 'air' in x.lower()]))
-        log.info('Domol:', len([x for x in labels if 'domol' in x.lower()]))
-        log.info('Octeniderm', len([x for x in labels if 'octeniderm' in x.lower()]))
+        counts: Counter = Counter(labels)
+        for lbl, cnt in counts.items():
+            log.info(f"{lbl}: {cnt}", module=Module.RF)
 
         # Step 1: Air vs Not-Air
         y_binary = ["air" if "air" in lbl else "not-air" for lbl in labels]

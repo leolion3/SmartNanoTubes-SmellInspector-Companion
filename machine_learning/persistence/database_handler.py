@@ -4,10 +4,11 @@ import os.path
 import sqlite3
 import traceback
 import uuid
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 
 import config
 from logging_framework.log_handler import log as logger, Module
+from ml_adapters import data_relabeller
 from persistence.queries import data_queries
 
 
@@ -45,10 +46,13 @@ class DatabaseHandler:
         for row in results:
             try:
                 _row = dict(row)
-                res.append({
+                _data = {
                     'label': _row['label'],
                     'data': self._get_sensor_data_from_row(_row)
-                })
+                }
+                if _data['label'].strip() != 'air':
+                    _data['quantity'] = _row['quantity'].replace('mu', 'μl')
+                res.append(_data)
             except Exception as e:
                 logger.error('Error formatting db row. Trace:', e, module=Module.DB)
                 logger.error(traceback.format_exc(), module=Module.DB)
@@ -79,15 +83,19 @@ class DatabaseHandler:
     def _fetch_substances(conn: sqlite3.Connection):
         cursor = conn.cursor()
         results: List[Dict[str, Any]] = cursor.execute(data_queries.get_substances()).fetchall()
+        results = [dict(result) for result in results]
         return {
-            str(dict(result)['ID']): (dict(result)['SUBSTANCE_NAME'], dict(result)['QUANTITY'])
+            str(result['ID']): {
+                'name': result['SUBSTANCE_NAME'],
+                'quantity': result['QUANTITY']
+            }
             for result in results
         }
 
     @staticmethod
     def _get_quantity_for_substance(substances, result):
         try:
-            return substances[dict(result)['SUBSTANCE_ID']][1]
+            return substances[result['SUBSTANCE_ID']][1]
         except:
             logger.error('Found no quantity, using default: 0.')
             return ''
@@ -96,7 +104,8 @@ class DatabaseHandler:
             self,
             conn: sqlite3.Connection,
             experiment_name: str,
-            substances: Dict[str, Tuple[str, str]]
+            substances: Dict[str, Dict[str, str]],
+            re_label_using_avg_humidity: bool
     ) -> List[Dict[str, Any]]:
         """
         Get all data for a given experiment name.
@@ -106,14 +115,22 @@ class DatabaseHandler:
         q: str = data_queries.get_data_by_test_id()
         cursor: sqlite3.Cursor = conn.cursor()
         results: List[Dict[str, Any]] = cursor.execute(q, [experiment_name]).fetchall()
+        results = [dict(result) for result in results]
         logger.debug('substances:', dict(results[0]))
-        return [{
-            'label': substances[dict(result)['SUBSTANCE_ID']][0],
-            'quantity': self._get_quantity_for_substance(substances, result),
-            'data': self._get_sensor_data_from_row(dict(result))
+        data: List[Dict[str, Any]] = [{
+            'label': substances[result['SUBSTANCE_ID']]['name'].lower(),
+            'quantity': substances[result['SUBSTANCE_ID']].get('quantity', '').lower(),
+            'data': self._get_sensor_data_from_row(dict(result)),
+            'humidity': result['HUMIDITY']
         } for result in results]
+        if re_label_using_avg_humidity:
+            logger.info('Re-labeling data with average humidity.', module=Module.DB)
+            data_relabeller.re_label_data(data)
+        for dp in data:
+            dp.pop('humidity', None)
+        return data
 
-    def _parse_data(self, filepath: str) -> None:
+    def _parse_data(self, filepath: str, re_label_using_avg_humidity: bool = True) -> None:
         try:
             conn = sqlite3.connect(filepath, check_same_thread=False)
             conn.row_factory = sqlite3.Row
@@ -125,7 +142,8 @@ class DatabaseHandler:
                 all_data.extend(self._get_data_for_experiment(
                     conn=conn,
                     experiment_name=experiment,
-                    substances=substances
+                    substances=substances,
+                    re_label_using_avg_humidity=re_label_using_avg_humidity
                 ))
             logger.info('Persisting data...', module=Module.DB)
             for dp in all_data:

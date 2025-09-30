@@ -29,5 +29,5 @@ def get_data_by_test_id() -> str:
 
 
 def get_substances() -> str:
-    return """SELECT DISTINCT ID, SUBSTANCE_NAME, QUANTITY
+    return """SELECT ID, SUBSTANCE_NAME, QUANTITY
               FROM Substance"""
