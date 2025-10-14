@@ -18,7 +18,7 @@ class DatabaseHandler:
 
     @staticmethod
     def _delete_if_exists() -> None:
-        if os.path.exists(config.DATABASE_FILE_PATH) and config.STANDALONE_EXEC:
+        if os.path.exists(config.DATABASE_FILE_PATH) and not config.STANDALONE_EXEC:
             os.remove(config.DATABASE_FILE_PATH)
             logger.info('Deleted cached database file.', module=Module.DB)
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import random
 from copy import deepcopy
+from enum import Enum
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
@@ -15,13 +16,24 @@ from model.models import Sample, SampleGroup
 from persistence.database_handler import database_handler as db
 
 
+class SampleStrategy(Enum):
+    UNDERSAMPLE = 'undersample'
+    OVERSAMPLE = 'oversample'
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.value
+
+
 class ReTrainer:
     """
     Pre-trains all available ML models.
     """
 
     @staticmethod
-    def _get_available_data() -> List[Sample]:
+    def _get_available_data(enable_quantities: bool = False) -> List[Sample]:
         """
         Get available data in the format:
         [List of labels] [List of samples - [64 float values per sample]]
@@ -29,7 +41,9 @@ class ReTrainer:
         log.info(f'Reading training data from {config.DATABASE_FILE_PATH}', module=Module.PRE)
         data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
-        # return [(d['label'] + ' ' + d.get('quantity', '')).strip().lower() for d in data], [d['data'] for d in data]
+        if enable_quantities:
+            return [Sample(d['label'].strip().lower() + ' ' + d.get('quantity', ''),
+                       [float (dp) for dp in d['data']]) for d in data]
         return [Sample(d['label'].strip().lower(), [float (dp) for dp in d['data']]) for d in data]
 
     @staticmethod
@@ -119,7 +133,7 @@ class ReTrainer:
     def _prepare_balanced_data(
             groups: List[SampleGroup],
             balance: bool = True,
-            strategy: str = "oversample"  # "undersample" | "oversample"
+            strategy: SampleStrategy = SampleStrategy.OVERSAMPLE
     ):
         """
         Converts grouped data into flat X, y lists.
@@ -136,9 +150,11 @@ class ReTrainer:
         if not balance or len(set(y)) <= 1:
             return x, y
         counts = {lbl: y.count(lbl) for lbl in set(y)}
-        if strategy == "undersample":
+        if strategy == SampleStrategy.UNDERSAMPLE:
+            log.info('Performing undersampling...', module=Module.PRE)
             target_count = min(counts.values())
-        elif strategy == "oversample":
+        elif strategy == SampleStrategy.OVERSAMPLE:
+            log.info('Performing oversampling...', module=Module.PRE)
             target_count = max(counts.values())
         else:
             raise ValueError(f"Unknown balancing strategy: {strategy}")
@@ -193,11 +209,11 @@ class ReTrainer:
         Trains all available ML models and returns them as a dict of names to MLAdapter objects.
         :return: the dictionary of names to MLAdapter objects.
         """
-        _samples: List[Sample] = self._get_available_data()
+        _samples: List[Sample] = self._get_available_data(enable_quantities=False)
         groups: List[SampleGroup] = self._group_sequences(samples=_samples)
         train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
-        x_train, y_train = self._prepare_balanced_data(train_groups, balance=False)
-        x_test, y_test = self._prepare_balanced_data(test_groups, balance=False)
+        x_train, y_train = self._prepare_balanced_data(train_groups, balance=True, strategy=SampleStrategy.UNDERSAMPLE)
+        x_test, y_test = self._prepare_balanced_data(test_groups, balance=True, strategy=SampleStrategy.UNDERSAMPLE)
 
         unique_train, counts_train = np.unique(y_train, return_counts=True)
         unique_test, counts_test = np.unique(y_test, return_counts=True)
