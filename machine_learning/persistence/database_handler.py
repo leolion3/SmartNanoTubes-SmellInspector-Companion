@@ -4,6 +4,7 @@ import os.path
 import sqlite3
 import traceback
 import uuid
+import config
 from typing import Dict, List, Any
 
 import config
@@ -17,7 +18,7 @@ class DatabaseHandler:
 
     @staticmethod
     def _delete_if_exists() -> None:
-        if os.path.exists(config.DATABASE_FILE_PATH):
+        if os.path.exists(config.DATABASE_FILE_PATH) and config.STANDALONE_EXEC:
             os.remove(config.DATABASE_FILE_PATH)
             logger.info('Deleted cached database file.', module=Module.DB)
 

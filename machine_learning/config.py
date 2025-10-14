@@ -11,3 +11,5 @@ try:
     RE_TRAINING_RATE = int(RE_TRAINING_RATE)
 except Exception:
     RE_TRAINING_RATE = 100
+
+STANDALONE_EXEC: bool = False

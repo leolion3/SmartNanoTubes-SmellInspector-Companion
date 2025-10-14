@@ -11,6 +11,7 @@ import config
 from logging_framework.log_handler import Module, log
 from ml_adapters.abstract_ml_adapter import MLAdapter
 from ml_adapters.ml_handler import ml_handler
+from model.models import Sample, SampleGroup
 from persistence.database_handler import database_handler as db
 
 
@@ -20,13 +21,16 @@ class ReTrainer:
     """
 
     @staticmethod
-    def _get_available_data() -> Tuple[List[str], List[List[float]]]:
+    def _get_available_data() -> List[Sample]:
+        """
+        Get available data in the format:
+        [List of labels] [List of samples - [64 float values per sample]]
+        """
         log.info(f'Reading training data from {config.DATABASE_FILE_PATH}', module=Module.PRE)
         data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
         # return [(d['label'] + ' ' + d.get('quantity', '')).strip().lower() for d in data], [d['data'] for d in data]
-        # TODO quantities disabled for thesis test
-        return [(d['label']).strip().lower() for d in data], [d['data'] for d in data]
+        return [Sample(d['label'].strip().lower(), [float (dp) for dp in d['data']]) for d in data]
 
     @staticmethod
     def _train_model(data: List[List[float]], labels: List[str], model_idx: int) -> MLAdapter:
@@ -58,52 +62,62 @@ class ReTrainer:
         return results
 
     @staticmethod
-    def _group_sequences(labels: List[str], data: List[List[float]]) -> List[Dict[str, Any]]:
+    def _group_sequences(samples: List[Sample]) -> List[SampleGroup]:
         """
         Groups contiguous samples by label changes.
+        :return: [{
+            'label': 'Sample label',
+            'data': [64 float values per sample]
+        }]
         """
-        groups = []
-        current_label, current_data = labels[0], []
+        groups: List[SampleGroup] = []
+        if not len(samples):
+            return []
+        current_label: str = samples[0].label
+        current_group: List[Sample] = []
 
-        for lbl, sample in zip(labels, data):
-            if lbl != current_label:
-                groups.append({"label": current_label, "data": current_data})
-                current_label, current_data = lbl, []
-            current_data.append(sample)
-        groups.append({"label": current_label, "data": current_data})
+        for sample in samples:
+            if sample.label != current_label:
+                groups.append(SampleGroup(label=current_label, samples=current_group))
+                current_label = sample.label
+                current_group = []
+            current_group.append(sample)
+        groups.append(SampleGroup(label=current_label, samples=current_group))
         return groups
 
     @staticmethod
-    def _split_groups(groups: List[Dict[str, Any]], train_ratio: float = 0.7, seed: int = 42):
+    def _split_groups(
+            groups: List[SampleGroup],
+            train_ratio: float = 0.7,
+            seed: int = 42
+    ) -> Tuple[List[SampleGroup], List[SampleGroup]]:
         """
         Splits groups into train/test while preserving contiguity and balancing labels.
+        Groups are first partitioned by label, shuffled within each label, and then
+        split according to the train_ratio. This ensures each label is proportionally
+        represented in both train and test sets.
         """
-        random.seed(seed)
-        by_label = {}
+        rng = random.Random(seed)
+        training_data: List[SampleGroup] = []
+        test_data: List[SampleGroup] = []
+        by_label: Dict[str, List[SampleGroup]] = {}
 
-        # Organize groups by label
-        for g in groups:
-            by_label.setdefault(g["label"], []).append(g)
+        # Group by label
+        for group in groups:
+            by_label.setdefault(group.label, []).append(group)
 
-        train_data, test_data = [], []
+        # Shuffle and split within each label group
+        for label, label_groups in by_label.items():
+            rng.shuffle(label_groups)
+            split_idx = int(len(label_groups) * train_ratio)
+            training_data.extend(label_groups[:split_idx])
+            test_data.extend(label_groups[split_idx:])
 
-        for lbl, g_list in by_label.items():
-            random.shuffle(g_list)
-
-            if len(g_list) == 1:
-                # only one group → force it into train
-                train_data.extend(g_list)
-            else:
-                split_idx = max(1, int(len(g_list) * train_ratio))
-                split_idx = min(len(g_list) - 1, split_idx)  # leave at least one for test
-                train_data.extend(g_list[:split_idx])
-                test_data.extend(g_list[split_idx:])
-
-        return train_data, test_data
+        return training_data, test_data
 
     @staticmethod
     def _prepare_balanced_data(
-            groups: List[Dict[str, Any]],
+            groups: List[SampleGroup],
             balance: bool = True,
             strategy: str = "oversample"  # "undersample" | "oversample"
     ):
@@ -116,34 +130,28 @@ class ReTrainer:
         """
         x, y = [], []
         for g in groups:
-            x.extend(g["data"])
-            y.extend([g["label"]] * len(g["data"]))
-
+            for sample in g.samples:
+                x.append(sample.data)
+                y.append(sample.label)
         if not balance or len(set(y)) <= 1:
             return x, y
-
         counts = {lbl: y.count(lbl) for lbl in set(y)}
-
         if strategy == "undersample":
             target_count = min(counts.values())
         elif strategy == "oversample":
             target_count = max(counts.values())
         else:
             raise ValueError(f"Unknown balancing strategy: {strategy}")
-
         x_bal, y_bal = [], []
         for lbl in set(y):
             lbl_samples = [(xx, yy) for xx, yy in zip(x, y) if yy == lbl]
-
             if strategy == "undersample":
                 sampled = random.sample(lbl_samples, target_count)
             else:  # oversample
                 sampled = random.choices(lbl_samples, k=target_count)
-
             for sample_x, sample_y in sampled:
                 x_bal.append(sample_x)
                 y_bal.append(sample_y)
-
         return x_bal, y_bal
 
     @staticmethod
@@ -185,11 +193,11 @@ class ReTrainer:
         Trains all available ML models and returns them as a dict of names to MLAdapter objects.
         :return: the dictionary of names to MLAdapter objects.
         """
-        _labels, _data = self._get_available_data()
-        groups = self._group_sequences(_labels, _data)
+        _samples: List[Sample] = self._get_available_data()
+        groups: List[SampleGroup] = self._group_sequences(samples=_samples)
         train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
-        x_train, y_train = self._prepare_balanced_data(train_groups, balance=True)
-        x_test, y_test = self._prepare_balanced_data(test_groups, balance=True)
+        x_train, y_train = self._prepare_balanced_data(train_groups, balance=False)
+        x_test, y_test = self._prepare_balanced_data(test_groups, balance=False)
 
         unique_train, counts_train = np.unique(y_train, return_counts=True)
         unique_test, counts_test = np.unique(y_test, return_counts=True)

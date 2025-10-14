@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 from typing import Dict, Optional, Any
 
+import sys
 import waitress
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from logging_framework.log_handler import log as logger, Module
 
+import config
 from ml_retrainer import re_trainer
 
 app = Flask(__name__)
@@ -124,4 +127,7 @@ def index():
 
 
 if __name__ == '__main__':
+    if '-m' in sys.argv:
+        logger.info('Running in standalone mode.', module=Module.MAIN)
+        config.STANDALONE_EXEC = True
     waitress.serve(app, host='0.0.0.0', port=9090)

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-from collections import Counter
 from typing import override, List
 
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier as SkRandomForest
 from sklearn.preprocessing import StandardScaler
 
