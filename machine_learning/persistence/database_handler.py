@@ -157,7 +157,7 @@ class DatabaseHandler:
             logger.error('Error parsing data. Trace:', e, module=Module.DB)
             logger.error(traceback.format_exc(), module=Module.DB)
 
-    def persist_from_db_data(self, data: str) -> None:
+    def persist_from_db_data(self, data: str, re_label: bool = False) -> None:
         try:
             logger.info('Resetting database...', module=Module.DB)
             self.conn = self._init_db()
@@ -166,7 +166,7 @@ class DatabaseHandler:
             data = base64.b64decode(data)
             with open(temp_filename, 'wb') as f:
                 f.write(data)
-            self._parse_data(temp_filename)
+            self._parse_data(temp_filename, re_label_using_avg_humidity=re_label)
             os.remove(temp_filename)
             logger.info('Loaded data from db file.', module=Module.DB)
         except Exception as e:

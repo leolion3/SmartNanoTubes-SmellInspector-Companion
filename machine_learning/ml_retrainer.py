@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import copy
 import random
 from copy import deepcopy
 from enum import Enum
@@ -76,7 +77,17 @@ class ReTrainer:
         return results
 
     @staticmethod
-    def _group_sequences(samples: List[Sample]) -> List[SampleGroup]:
+    def _create_sample_groups_for_each_sample(samples: List[Sample]) -> List[SampleGroup]:
+        """
+        Converts single samples to sample groups, used when grouping is disabled.
+        :param samples: the samples to convert to sample groups
+        :return: the converted sample groups
+        """
+        return [
+            SampleGroup(samples=[sample], label=sample.label) for sample in samples
+        ]
+
+    def _group_sequences(self, samples: List[Sample], group=False) -> List[SampleGroup]:
         """
         Groups contiguous samples by label changes.
         :return: [{
@@ -84,6 +95,8 @@ class ReTrainer:
             'data': [64 float values per sample]
         }]
         """
+        if not group:
+            return self._create_sample_groups_for_each_sample(samples)
         groups: List[SampleGroup] = []
         if not len(samples):
             return []
@@ -103,7 +116,8 @@ class ReTrainer:
     def _split_groups(
             groups: List[SampleGroup],
             train_ratio: float = 0.7,
-            seed: int = 42
+            seed: int = 42,
+            group: bool = True
     ) -> Tuple[List[SampleGroup], List[SampleGroup]]:
         """
         Splits groups into train/test while preserving contiguity and balancing labels.
@@ -115,6 +129,14 @@ class ReTrainer:
         training_data: List[SampleGroup] = []
         test_data: List[SampleGroup] = []
         by_label: Dict[str, List[SampleGroup]] = {}
+
+        if not group:
+            res = copy.deepcopy(groups)
+            rng.shuffle(res)
+            split_idx = int(len(res) * train_ratio)
+            training_data = res[:split_idx]
+            test_data = res[split_idx:]
+            return training_data, test_data
 
         # Group by label
         for group in groups:
@@ -204,16 +226,22 @@ class ReTrainer:
         plt.close(fig)
         log.info(f"Confusion matrix saved to {filename}", module=Module.RF)
 
-    def _train_models(self) -> Dict[str, MLAdapter]:
+    def _train_models(
+            self,
+            enable_quantities: bool = False,
+            group: bool = False,
+            balance: bool = False,
+            balance_strategy: SampleStrategy = SampleStrategy.UNDERSAMPLE
+    ) -> Dict[str, MLAdapter]:
         """
         Trains all available ML models and returns them as a dict of names to MLAdapter objects.
         :return: the dictionary of names to MLAdapter objects.
         """
-        _samples: List[Sample] = self._get_available_data(enable_quantities=False)
-        groups: List[SampleGroup] = self._group_sequences(samples=_samples)
-        train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
-        x_train, y_train = self._prepare_balanced_data(train_groups, balance=True, strategy=SampleStrategy.UNDERSAMPLE)
-        x_test, y_test = self._prepare_balanced_data(test_groups, balance=True, strategy=SampleStrategy.UNDERSAMPLE)
+        _samples: List[Sample] = self._get_available_data(enable_quantities=enable_quantities)
+        groups: List[SampleGroup] = self._group_sequences(samples=_samples, group=group)
+        train_groups, test_groups = self._split_groups(groups, train_ratio=0.7, group=group)
+        x_train, y_train = self._prepare_balanced_data(train_groups, balance=balance, strategy=balance_strategy)
+        x_test, y_test = self._prepare_balanced_data(test_groups, balance=balance, strategy=balance_strategy)
 
         unique_train, counts_train = np.unique(y_train, return_counts=True)
         unique_test, counts_test = np.unique(y_test, return_counts=True)
@@ -270,9 +298,14 @@ class ReTrainer:
 
     def persist_from_db_data(self, database: str) -> None:
         try:
-            db.persist_from_db_data(database)
+            db.persist_from_db_data(database, re_label=True)
             log.info('Persisted successfully. Training models...', module=Module.PRE)
-            self.classifiers = self._train_models()
+            self.classifiers = self._train_models(
+                enable_quantities=False,
+                group=True,
+                balance=True,
+                balance_strategy=SampleStrategy.UNDERSAMPLE
+            )
             log.info('Models trained successfully.', module=Module.PRE)
         except Exception as e:
             log.error('Error persisting training data. Trace:', e, module=Module.PRE)
