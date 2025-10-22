@@ -29,7 +29,7 @@ def _re_label_windowed_data(
     ]
 
     # compute the 75th percentile (upper 25%)
-    upper_25th = float(np.percentile(window_humidities, 10))
+    upper_25th = float(np.percentile(window_humidities, 75))
     threshold = (average_ambient_humidity + upper_25th) / 2.0
 
     # re-label points where humidity <= threshold

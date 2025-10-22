@@ -6,15 +6,16 @@ def create_data_table_query() -> str:
             "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
             f"{', '.join([f'DATA_{i} TEXT' for i in range(64)])}, "
             "label TEXT NOT NULL,"
-            "quantity TEXT);")
+            "quantity TEXT,"
+            "humidity TEXT);")
 
 
 def persist_data_query() -> str:
-    return f'INSERT INTO data values (NULL, {", ".join(["?" for _ in range(64)])}, ?, ?)'
+    return f'INSERT INTO data values (NULL, {", ".join(["?" for _ in range(64)])}, ?, ?, ?)'
 
 
 def get_data_query() -> str:
-    return 'SELECT * FROM data'
+    return 'SELECT * FROM data ORDER BY ID ASC'
 
 
 def get_experiments() -> str:
@@ -25,7 +26,8 @@ def get_experiments() -> str:
 def get_data_by_test_id() -> str:
     return """SELECT *
               FROM Data
-              WHERE TEST_ID = ?"""
+              WHERE TEST_ID = ?
+              ORDER BY ID ASC"""
 
 
 def get_substances() -> str:

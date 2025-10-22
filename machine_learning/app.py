@@ -72,7 +72,8 @@ def persist_new_data():
         re_trainer.add_data(
             data['data'],
             data['substance'],
-            data['quantity']
+            data['quantity'],
+            data.get('humidity', '0')
         )
         return jsonify({
             'status': 'ok'

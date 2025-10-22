@@ -49,7 +49,8 @@ class DatabaseHandler:
                 _row = dict(row)
                 _data = {
                     'label': _row['label'],
-                    'data': self._get_sensor_data_from_row(_row)
+                    'data': self._get_sensor_data_from_row(_row),
+                    'humidity': float(_row['humidity'])
                 }
                 if _data['label'].strip() != 'air':
                     _data['quantity'] = _row['quantity'].replace('mu', 'μl')
@@ -65,10 +66,10 @@ class DatabaseHandler:
         results: List[Dict[str, Any]] = cursor.execute(q).fetchall()
         return self._get_data(results)
 
-    def add_data(self, data: List[str], label: str, quantity: str) -> None:
+    def add_data(self, data: List[str], label: str, quantity: str, humidity: str) -> None:
         try:
             q: str = data_queries.persist_data_query()
-            self.conn.execute(q, (*data, label, quantity))
+            self.conn.execute(q, (*data, label, quantity, humidity))
             self.conn.commit()
         except Exception as e:
             logger.error('Error persisting data. Trace:', e, module=Module.DB)
@@ -127,8 +128,6 @@ class DatabaseHandler:
         if re_label_using_avg_humidity:
             logger.info('Re-labeling data with average humidity.', module=Module.DB)
             data_relabeller.re_label_data(data)
-        for dp in data:
-            dp.pop('humidity', None)
         return data
 
     def _parse_data(self, filepath: str, re_label_using_avg_humidity: bool = True) -> None:
@@ -151,7 +150,8 @@ class DatabaseHandler:
                 self.add_data(
                     data=[str(i) for i in dp['data']],
                     label=dp['label'],
-                    quantity=dp['quantity']
+                    quantity=dp['quantity'],
+                    humidity=dp['humidity']
                 )
         except Exception as e:
             logger.error('Error parsing data. Trace:', e, module=Module.DB)

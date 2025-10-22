@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import copy
 import random
+import statistics
 from copy import deepcopy
 from enum import Enum
 from typing import List, Dict, Any, Tuple
@@ -43,9 +43,16 @@ class ReTrainer:
         data: List[Dict[str, Any]] = db.get_labelled_data()
         log.info('Total Data Entries:', len(data), module=Module.PRE)
         if enable_quantities:
-            return [Sample(d['label'].strip().lower() + ' ' + d.get('quantity', ''),
-                       [float (dp) for dp in d['data']]) for d in data]
-        return [Sample(d['label'].strip().lower(), [float (dp) for dp in d['data']]) for d in data]
+            return [Sample(
+                label=d['label'].strip().lower() + ' ' + d.get('quantity', ''),
+                data=[float(dp) for dp in d['data']],
+                humidity=d['humidity']
+            ) for d in data]
+        return [Sample(
+            label=d['label'].strip().lower(),
+            data=[float(dp) for dp in d['data']],
+            humidity=d['humidity']
+        ) for d in data]
 
     @staticmethod
     def _train_model(data: List[List[float]], labels: List[str], model_idx: int) -> MLAdapter:
@@ -87,7 +94,8 @@ class ReTrainer:
             SampleGroup(samples=[sample], label=sample.label) for sample in samples
         ]
 
-    def _group_sequences(self, samples: List[Sample], group=False) -> List[SampleGroup]:
+    @staticmethod
+    def _group_sequences(samples: List[Sample]) -> List[SampleGroup]:
         """
         Groups contiguous samples by label changes.
         :return: [{
@@ -95,8 +103,6 @@ class ReTrainer:
             'data': [64 float values per sample]
         }]
         """
-        if not group:
-            return self._create_sample_groups_for_each_sample(samples)
         groups: List[SampleGroup] = []
         if not len(samples):
             return []
@@ -116,8 +122,7 @@ class ReTrainer:
     def _split_groups(
             groups: List[SampleGroup],
             train_ratio: float = 0.7,
-            seed: int = 42,
-            group: bool = True
+            seed: int = 42
     ) -> Tuple[List[SampleGroup], List[SampleGroup]]:
         """
         Splits groups into train/test while preserving contiguity and balancing labels.
@@ -129,14 +134,6 @@ class ReTrainer:
         training_data: List[SampleGroup] = []
         test_data: List[SampleGroup] = []
         by_label: Dict[str, List[SampleGroup]] = {}
-
-        if not group:
-            res = copy.deepcopy(groups)
-            rng.shuffle(res)
-            split_idx = int(len(res) * train_ratio)
-            training_data = res[:split_idx]
-            test_data = res[split_idx:]
-            return training_data, test_data
 
         # Group by label
         for group in groups:
@@ -155,7 +152,9 @@ class ReTrainer:
     def _prepare_balanced_data(
             groups: List[SampleGroup],
             balance: bool = True,
-            strategy: SampleStrategy = SampleStrategy.OVERSAMPLE
+            strategy: SampleStrategy = SampleStrategy.OVERSAMPLE,
+            enable_humidity: bool = False,
+            average_values_across_sensors: bool = False
     ):
         """
         Converts grouped data into flat X, y lists.
@@ -167,7 +166,27 @@ class ReTrainer:
         x, y = [], []
         for g in groups:
             for sample in g.samples:
-                x.append(sample.data)
+                data = sample.data
+                if average_values_across_sensors:
+                    data = [
+                        float(statistics.mean([data[i], data[i+16], data[i+32], data[i+48]]))
+                        for i in range(16)
+                    ]
+                    for i in range(len(data)):
+                        log.debug(
+                            'Average Channel:',
+                            i,
+                            'Original sample:',
+                            sample.data[i],
+                            sample.data[i+16],
+                            sample.data[i+32],
+                            sample.data[i+48],
+                            'Averaged:',
+                            data[i]
+                        )
+                if enable_humidity:
+                    data = data + [sample.humidity]
+                x.append(data)
                 y.append(sample.label)
         if not balance or len(set(y)) <= 1:
             return x, y
@@ -229,19 +248,35 @@ class ReTrainer:
     def _train_models(
             self,
             enable_quantities: bool = False,
-            group: bool = False,
             balance: bool = False,
-            balance_strategy: SampleStrategy = SampleStrategy.UNDERSAMPLE
+            balance_strategy: SampleStrategy = SampleStrategy.UNDERSAMPLE,
+            humidity_as_a_feature: bool = False,
+            average_values_across_sensors: bool = False
     ) -> Dict[str, MLAdapter]:
         """
         Trains all available ML models and returns them as a dict of names to MLAdapter objects.
         :return: the dictionary of names to MLAdapter objects.
         """
-        _samples: List[Sample] = self._get_available_data(enable_quantities=enable_quantities)
-        groups: List[SampleGroup] = self._group_sequences(samples=_samples, group=group)
-        train_groups, test_groups = self._split_groups(groups, train_ratio=0.7, group=group)
-        x_train, y_train = self._prepare_balanced_data(train_groups, balance=balance, strategy=balance_strategy)
-        x_test, y_test = self._prepare_balanced_data(test_groups, balance=balance, strategy=balance_strategy)
+        _samples: List[Sample] = self._get_available_data(
+            enable_quantities=enable_quantities
+        )
+        groups: List[SampleGroup] = self._group_sequences(samples=_samples)
+        log.info('Groups:', groups[:3], module=Module.ML)
+        train_groups, test_groups = self._split_groups(groups, train_ratio=0.7)
+        x_train, y_train = self._prepare_balanced_data(
+            train_groups,
+            balance=balance,
+            strategy=balance_strategy,
+            enable_humidity=humidity_as_a_feature,
+            average_values_across_sensors=average_values_across_sensors
+        )
+        x_test, y_test = self._prepare_balanced_data(
+            test_groups,
+            balance=balance,
+            strategy=balance_strategy,
+            enable_humidity=humidity_as_a_feature,
+            average_values_across_sensors=average_values_across_sensors
+        )
 
         unique_train, counts_train = np.unique(y_train, return_counts=True)
         unique_test, counts_test = np.unique(y_test, return_counts=True)
@@ -284,10 +319,10 @@ class ReTrainer:
             log.error('Error re-training classifiers, reverting. Trace:', e, module=Module.PRE)
             self.classifiers = old_model_data
 
-    def add_data(self, data: List[str], label: str, quantity: str) -> None:
+    def add_data(self, data: List[str], label: str, quantity: str, humidity: str) -> None:
         try:
             log.debug('Adding training data. Current count:', self._re_training_count, module=Module.PRE)
-            db.add_data(data, label, quantity)
+            db.add_data(data, label, quantity, humidity)
             self._re_training_count += 1
             if self._re_training_count >= config.RE_TRAINING_RATE:
                 self._re_training_count = 0
@@ -302,9 +337,10 @@ class ReTrainer:
             log.info('Persisted successfully. Training models...', module=Module.PRE)
             self.classifiers = self._train_models(
                 enable_quantities=False,
-                group=True,
                 balance=True,
-                balance_strategy=SampleStrategy.UNDERSAMPLE
+                balance_strategy=SampleStrategy.UNDERSAMPLE,
+                humidity_as_a_feature=True,
+                average_values_across_sensors=True
             )
             log.info('Models trained successfully.', module=Module.PRE)
         except Exception as e:

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
 class Sample:
     label: str
     data: List[float]
+    humidity: Optional[float]
 
 
 @dataclass
