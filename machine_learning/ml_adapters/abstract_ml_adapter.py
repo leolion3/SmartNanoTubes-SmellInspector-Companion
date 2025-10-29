@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import List, Optional
+
+
+class SampleStrategy(Enum):
+    UNDERSAMPLE = 'undersample'
+    OVERSAMPLE = 'oversample'
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return self.value
 
 
 class MLAdapter(ABC):

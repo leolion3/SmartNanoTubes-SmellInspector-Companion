@@ -11,21 +11,10 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 import config
 from logging_framework.log_handler import Module, log
-from ml_adapters.abstract_ml_adapter import MLAdapter
+from ml_adapters.abstract_ml_adapter import MLAdapter, SampleStrategy
 from ml_adapters.ml_handler import ml_handler
 from model.models import Sample, SampleGroup
 from persistence.database_handler import database_handler as db
-
-
-class SampleStrategy(Enum):
-    UNDERSAMPLE = 'undersample'
-    OVERSAMPLE = 'oversample'
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __repr__(self) -> str:
-        return self.value
 
 
 class ReTrainer:
@@ -154,7 +143,8 @@ class ReTrainer:
             balance: bool = True,
             strategy: SampleStrategy = SampleStrategy.OVERSAMPLE,
             enable_humidity: bool = False,
-            average_values_across_sensors: bool = False
+            average_values_across_sensors: bool = False,
+            use_only_humidity: bool = False  # Experimental, thesis evaluation only
     ):
         """
         Converts grouped data into flat X, y lists.
@@ -186,6 +176,8 @@ class ReTrainer:
                         )
                 if enable_humidity:
                     data = data + [sample.humidity]
+                if use_only_humidity:
+                    data = [sample.humidity]
                 x.append(data)
                 y.append(sample.label)
         if not balance or len(set(y)) <= 1:
@@ -251,7 +243,8 @@ class ReTrainer:
             balance: bool = False,
             balance_strategy: SampleStrategy = SampleStrategy.UNDERSAMPLE,
             humidity_as_a_feature: bool = False,
-            average_values_across_sensors: bool = False
+            average_values_across_sensors: bool = False,
+            use_only_humidity: bool = False  # Experimental only
     ) -> Dict[str, MLAdapter]:
         """
         Trains all available ML models and returns them as a dict of names to MLAdapter objects.
@@ -268,14 +261,16 @@ class ReTrainer:
             balance=balance,
             strategy=balance_strategy,
             enable_humidity=humidity_as_a_feature,
-            average_values_across_sensors=average_values_across_sensors
+            average_values_across_sensors=average_values_across_sensors,
+            use_only_humidity=use_only_humidity
         )
         x_test, y_test = self._prepare_balanced_data(
             test_groups,
             balance=balance,
             strategy=balance_strategy,
             enable_humidity=humidity_as_a_feature,
-            average_values_across_sensors=average_values_across_sensors
+            average_values_across_sensors=average_values_across_sensors,
+            use_only_humidity=use_only_humidity
         )
 
         unique_train, counts_train = np.unique(y_train, return_counts=True)
@@ -313,7 +308,14 @@ class ReTrainer:
     def _re_train_models(self) -> None:
         old_model_data = deepcopy(self.classifiers)
         try:
-            self.classifiers = self._train_models()
+            self.classifiers = self._train_models(
+                enable_quantities=config.ENABLE_QUANTITIES,
+                balance=config.BALANCE_DATASET,
+                balance_strategy=config.BALANCE_STRATEGY,
+                humidity_as_a_feature=config.ENABLE_HUMIDITY,
+                average_values_across_sensors=config.COMPUTE_AVERAGES,
+                use_only_humidity=config.HUMIDITY_ONLY  # Experimental only
+            )
             log.info('Re-trained successfully.', module=Module.PRE)
         except Exception as e:
             log.error('Error re-training classifiers, reverting. Trace:', e, module=Module.PRE)
@@ -336,11 +338,12 @@ class ReTrainer:
             db.persist_from_db_data(database, re_label=True)
             log.info('Persisted successfully. Training models...', module=Module.PRE)
             self.classifiers = self._train_models(
-                enable_quantities=False,
-                balance=True,
-                balance_strategy=SampleStrategy.UNDERSAMPLE,
-                humidity_as_a_feature=True,
-                average_values_across_sensors=True
+                enable_quantities=config.ENABLE_QUANTITIES,
+                balance=config.BALANCE_DATASET,
+                balance_strategy=config.BALANCE_STRATEGY,
+                humidity_as_a_feature=config.ENABLE_HUMIDITY,
+                average_values_across_sensors=config.COMPUTE_AVERAGES,
+                use_only_humidity=config.HUMIDITY_ONLY  # Experimental only
             )
             log.info('Models trained successfully.', module=Module.PRE)
         except Exception as e:
